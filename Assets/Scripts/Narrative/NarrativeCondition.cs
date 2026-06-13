@@ -11,7 +11,12 @@ namespace Gate2Reality.Narrative
         /// БЕЗ геолокации — чистый ARCore-трекинг).</summary>
         Proximity = 1,
         /// <summary>Сцена 2: игрок смотрит на точку (конус взгляда камеры).</summary>
-        Gaze = 2
+        Gaze = 2,
+        /// <summary>Глава II «По ту сторону»: ПЕРЕВЁРНУТЫЙ взгляд — узел срабатывает,
+        /// когда якорь рядом, но игрок смотрит В СТОРОНУ (объект «живёт», пока за
+        /// ним не наблюдают). Тематическая инверсия Gaze: те же математика и поля,
+        /// обратный предикат.</summary>
+        AvertedGaze = 3
     }
 
     /// <summary>
@@ -95,6 +100,21 @@ namespace Gate2Reality.Narrative
                     anchor = new Pose(targetPos, runtimeTarget.rotation);
                     return true;
                 }
+                case ConditionType.AvertedGaze:
+                {
+                    // Инверсия Gaze: якорь близко, но игрок НЕ смотрит на него.
+                    float sqrDist = toTarget.sqrMagnitude;
+                    if (sqrDist > maxGazeDistance * maxGazeDistance) return false;
+                    if (sqrDist < 1e-6f) return false; // стоим на нём — наблюдаем в упор
+
+                    float cosAngle = Vector3.Dot(player.forward,
+                                                 toTarget / Mathf.Sqrt(sqrDist));
+                    // Смотрит ПРЯМО на якорь -> ещё наблюдает, объект замер.
+                    if (cosAngle >= Mathf.Cos(maxGazeAngleDeg * Mathf.Deg2Rad)) return false;
+
+                    anchor = new Pose(targetPos, runtimeTarget.rotation);
+                    return true;
+                }
                 default:
                     return false; // Semantic кормится через ReportDetection
             }
@@ -118,6 +138,7 @@ namespace Gate2Reality.Narrative
             ConditionType.SemanticDetection => $"YOLO:{requiredLabel} conf>{minConfidence}",
             ConditionType.Proximity => $"Proximity r={triggerRadius}m -> {(runtimeTarget ? runtimeTarget.name : "<runtime>")}",
             ConditionType.Gaze => $"Gaze {maxGazeAngleDeg}deg -> {(runtimeTarget ? runtimeTarget.name : "<runtime>")}",
+            ConditionType.AvertedGaze => $"AvertedGaze {maxGazeAngleDeg}deg @<{maxGazeDistance}m -> {(runtimeTarget ? runtimeTarget.name : "<runtime>")}",
             _ => "?"
         };
 #endif
