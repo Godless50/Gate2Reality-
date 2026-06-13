@@ -1,96 +1,95 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
 
 namespace Gate2Reality.Detection
 {
-    public class DepthPoseProjector : MonoBehaviour
+    /// <summary>
+    /// Проекция 2D-детекции YOLO в 3D-позу мира. Реализует Fallback-механизм из ТЗ:
+    ///
+    ///   Уровень 1: Raycast против ARCore Depth API (TrackableType.Depth) —
+    ///              самый точный: попадает прямо в поверхность физического объекта.
+    ///   Уровень 2: Raycast против обнаруженных плоскостей (объект стоит на
+    ///              столе/полу — точка рядом с реальной).
+    ///   Уровень 3: «Approximation marker» — точка на луче на дистанции,
+    ///              оценённой из углового размера бокса. Грубо, но достаточно,
+    ///              чтобы guard-маяк и партиклы указывали в правильную сторону.
+    ///
+    /// Возвращает также boundsRadius — оценку физического радиуса объекта
+    /// (нужна NarrativeManager: правило «стул < 1.5 м»).
+    /// </summary>
+    [DisallowMultipleComponent]
+    public sealed class DepthPoseProjector : MonoBehaviour
     {
-        [SerializeField] private Camera arCamera;
-        [SerializeField] private AROcclusionManager occlusionManager;
-        [SerializeField] private ARPlaneManager planeManager;
-        [SerializeField] private float fallbackDepth = 1.5f;
-        [SerializeField] private float planeRaycastDistance = 10f;
+        [Header("Связи")]
+        [SerializeField] private Camera arCamera;                 // камера из XR Origin
+        [SerializeField] private ARRaycastManager raycastManager;
 
-        // 3-level fallback: ARCore Depth API → plane raycast → fixed approximation
-        public bool TryProjectToWorld(Vector2 screenUv, float imageWidth, out Pose worldPose, out float confidence)
+        [Header("Fallback уровня 3")]
+        [Tooltip("Типичный физический размер целевых объектов, м (медиана chair/book/cup). Используется для оценки дистанции по угловому размеру бокса.")]
+        [SerializeField] private float assumedObjectSize = 0.5f;
+
+        [Tooltip("Ограничение дистанции аппроксимации, м")]
+        [SerializeField] private float maxApproxDistance = 5f;
+
+        // Преаллоцированный список хитов — ARRaycastManager пишет в него без GC.
+        private static readonly List<ARRaycastHit> s_Hits = new List<ARRaycastHit>(8);
+
+        /// <summary>
+        /// viewportPoint: центр бокса в координатах viewport (0..1).
+        /// bboxViewportWidth: ширина бокса в долях ширины кадра (для оценки радиуса).
+        /// </summary>
+        public bool TryProjectToWorld(Vector2 viewportPoint, float bboxViewportWidth,
+                                      out Pose worldPose, out float boundsRadius)
         {
-            worldPose = default;
-            confidence = 0f;
+            Vector2 screenPoint = new Vector2(
+                viewportPoint.x * Screen.width,
+                viewportPoint.y * Screen.height);
 
-            Vector2 screenPos = new Vector2(screenUv.x * Screen.width, screenUv.y * Screen.height);
-
-            // Level 1: ARCore environment depth
-            if (TryDepthApiProject(screenPos, out worldPose))
+            // ---------- Уровень 1: Depth API ----------
+            if (raycastManager.Raycast(screenPoint, s_Hits, TrackableType.Depth))
             {
-                confidence = 1f;
+                worldPose = s_Hits[0].pose;
+                boundsRadius = EstimateRadius(bboxViewportWidth, worldPose.position);
                 return true;
             }
 
-            // Level 2: ARPlane raycast
-            if (TryPlaneRaycast(screenPos, out worldPose))
+            // ---------- Уровень 2: плоскости ----------
+            if (raycastManager.Raycast(screenPoint, s_Hits,
+                    TrackableType.PlaneWithinPolygon | TrackableType.PlaneEstimated))
             {
-                confidence = 0.75f;
+                worldPose = s_Hits[0].pose;
+                boundsRadius = EstimateRadius(bboxViewportWidth, worldPose.position);
                 return true;
             }
 
-            // Level 3: fixed-depth approximation
-            Ray ray = arCamera.ScreenPointToRay(screenPos);
-            worldPose = new Pose(ray.GetPoint(fallbackDepth), Quaternion.LookRotation(-ray.direction));
-            confidence = 0.3f;
-            return true;
+            // ---------- Уровень 3: аппроксимационный маркер ----------
+            // Дистанция из углового размера: d ≈ size / (2 * tan(angularHalfWidth)).
+            Ray ray = arCamera.ViewportPointToRay(viewportPoint);
+            float horizontalFovRad = arCamera.fieldOfView * Mathf.Deg2Rad * arCamera.aspect;
+            float angularWidth = Mathf.Max(0.01f, bboxViewportWidth * horizontalFovRad);
+            float distance = Mathf.Min(maxApproxDistance,
+                assumedObjectSize / (2f * Mathf.Tan(angularWidth * 0.5f)));
+
+            Vector3 pos = ray.origin + ray.direction * distance;
+            // Ориентация «лицом к игроку» — для билбордов-маркеров и маяка.
+            worldPose = new Pose(pos, Quaternion.LookRotation(-ray.direction));
+            boundsRadius = EstimateRadius(bboxViewportWidth, pos);
+            return true; // уровень 3 не может «не сработать» — всегда даём оценку
         }
 
-        private bool TryDepthApiProject(Vector2 screenPos, out Pose pose)
+        /// <summary>
+        /// Физический радиус из углового размера и известной дистанции:
+        /// r ≈ d * tan(angularHalfWidth). Тригонометрия по месту, без кэшей —
+        /// вызывается максимум пару десятков раз в секунду.
+        /// </summary>
+        private float EstimateRadius(float bboxViewportWidth, Vector3 worldPos)
         {
-            pose = default;
-            if (occlusionManager == null) return false;
-
-            var depthTex = occlusionManager.environmentDepthTexture;
-            if (depthTex == null) return false;
-
-            float u = screenPos.x / Screen.width;
-            float v = screenPos.y / Screen.height;
-            // Sample depth (ARCore depth is in millimetres as uint16 encoded in RG channels)
-            // We treat this as a valid hit if depth > 0
-            Ray ray = arCamera.ScreenPointToRay(screenPos);
-            float depthM = SampleDepthMetres(depthTex, u, v);
-            if (depthM <= 0f) return false;
-
-            pose = new Pose(ray.GetPoint(depthM), Quaternion.LookRotation(-ray.direction));
-            return true;
-        }
-
-        private bool TryPlaneRaycast(Vector2 screenPos, out Pose pose)
-        {
-            pose = default;
-            if (planeManager == null) return false;
-
-            Ray ray = arCamera.ScreenPointToRay(screenPos);
-            foreach (var plane in planeManager.trackables)
-            {
-                var planeTransform = plane.transform;
-                var planeNormal = planeTransform.up;
-                float denom = Vector3.Dot(planeNormal, ray.direction);
-                if (Mathf.Abs(denom) < 1e-4f) continue;
-
-                float t = Vector3.Dot(planeNormal, planeTransform.position - ray.origin) / denom;
-                if (t < 0f || t > planeRaycastDistance) continue;
-
-                Vector3 hit = ray.GetPoint(t);
-                pose = new Pose(hit, Quaternion.LookRotation(-planeNormal, Vector3.up));
-                return true;
-            }
-            return false;
-        }
-
-        private static float SampleDepthMetres(Texture2D depthTex, float u, float v)
-        {
-            if (depthTex == null) return 0f;
-            Color c = depthTex.GetPixelBilinear(u, v);
-            // Decode packed uint16 from RG (ARCore convention)
-            int raw = (int)(c.r * 255f) | ((int)(c.g * 255f) << 8);
-            return raw * 0.001f;
+            float distance = Vector3.Distance(arCamera.transform.position, worldPos);
+            float horizontalFovRad = arCamera.fieldOfView * Mathf.Deg2Rad * arCamera.aspect;
+            float angularHalfWidth = bboxViewportWidth * horizontalFovRad * 0.5f;
+            return distance * Mathf.Tan(angularHalfWidth);
         }
     }
 }

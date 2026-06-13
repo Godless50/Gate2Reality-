@@ -1,275 +1,237 @@
-# Gate2Reality — Unity Setup Checklist
-**Target:** Android 15 · Pixel 9 / Galaxy S26 · HONOR 90 field test
+# Gate2Reality — Чек-лист настройки Unity (Сцена 1, Android 15)
+
+Definitive setup для Pixel 9 / Galaxy S26. Порядок имеет значение: сверху вниз.
 
 ---
 
-## §1 · Packages (Package Manager)
+## 1. Пакеты (Package Manager)
 
 - [ ] **AR Foundation** 6.x (latest verified)
-- [ ] **Google ARCore XR Plugin** 6.x (same major as ARF)
-- [ ] **Unity Sentis** 2.x (YOLO inference)
-- [ ] **Universal RP** (from current LTS)
-- [ ] **TextMeshPro** (subtitle controller)
-- [ ] **Input System** package
-- [ ] Remove **ARKit XR Plugin** (iOS not target)
+- [ ] **Google ARCore XR Plugin** 6.x (та же мажорная версия, что ARF)
+- [ ] **Unity Sentis** 2.x — инференс YOLO
+- [ ] **Universal RP** (версия из LTS)
+- [ ] Удалить неиспользуемое: ARKit XR Plugin (iOS не цель) — минус размер сборки
 
----
+## 2. Project Settings → Player (Android)
 
-## §2 · Project Settings → Player (Android)
+- [ ] Scripting Backend: **IL2CPP**, Target Architectures: **ARM64 only**
+- [ ] Graphics API: **Vulkan** первым, GLES3 fallback'ом (Sentis GPUCompute и URP на Vulkan быстрее)
+- [ ] Minimum API Level: **29**, Target API Level: **35 (Android 15)**
+- [ ] Active Input Handling: Input System Package
+- [ ] **Optimized Frame Pacing: ON** — ровный кадр без скачков частоты
+- [ ] Incremental GC: **ON** (страховка; в горячем пути аллокаций всё равно ноль)
+- [ ] Permissions: только CAMERA. Никаких INTERNET-зависимых фич в рантайме —
+      privacy-обещание «всё on-device» должно быть видно даже в манифесте
 
-- [ ] Scripting Backend: **IL2CPP**
-- [ ] Target Architectures: **ARM64 only**
-- [ ] Graphics API: **Vulkan** (primary) + **GLES3** (fallback) — remove Vulkan auto-selection
-- [ ] Minimum API Level: **29**
-- [ ] Target API Level: **35** (Android 15)
-- [ ] Active Input Handling: **Input System Package (New)**
-- [ ] Optimized Frame Pacing: **ON**
-- [ ] Incremental GC: **ON**
-- [ ] Permissions: **CAMERA** only — no INTERNET runtime feature
-
----
-
-## §3 · XR Plug-in Management
+## 3. XR Plug-in Management
 
 - [ ] Android tab → **Google ARCore: ON**
-- [ ] Requirement: **Required**
-- [ ] Depth: **Required**
+- [ ] Requirement: **Required**; Depth: **Required** (Сцена 1 не работает без Depth API —
+      честно отсекаем несовместимые устройства на уровне Play Store)
 
----
-
-## §4 · Scene Hierarchy
+## 4. Иерархия сцены
 
 ```
-[AR Session]
-  └─ ARSession
-  └─ ARInputManager
-
+[AR Session]            ← ARSession + ARInputManager
 [XR Origin]
-  └─ Camera Offset
-       └─ Main Camera
-            ├─ ARCameraManager        (Light Est: Ambient Intensity + Color)
-            ├─ ARCameraBackground
-            ├─ AROcclusionManager     (Env Depth: Best, Prefer Env Occlusion)
-            └─ DepthPoseProjector
-
-[XR Origin (Plane)]
-  ├─ ARRaycastManager
-  └─ ARPlaneManager                  (plane visualization OFF)
-
-[Gate2Reality Core]
-  ├─ NarrativeManager                (nodes 0-2 Scene 1 / 3-6 Scene 2)
-  ├─ YoloObjectDetector              (model: yolov8n.onnx, 5 Hz)
-  ├─ SceneOneDirector
-  ├─ NarrativeContextCollector
-  ├─ OnDeviceNarrativeGenerator      (timeout 3s, fallback pools)
-  ├─ HorrorSafetyGovernor
-  └─ DeviceTuningProfile             (Script Exec Order: -100)
-
+ └─ Camera Offset
+     └─ Main Camera     ← ARCameraManager, ARCameraBackground,
+                           AROcclusionManager, DepthPoseProjector (arCamera = этот)
+[XR Origin]             ← ARRaycastManager, ARPlaneManager (визуализатор плоскостей ВЫКЛ —
+                           дебаг-меши плоскостей убивают атмосферу и fillrate)
+[Gate2Reality Core]     ← NarrativeManager, YoloObjectDetector, SceneOneDirector,
+                           NarrativeContextCollector, OnDeviceNarrativeGenerator,
+                           HorrorSafetyGovernor
 [Effects]
-  ├─ ChairEffect
-  │    ├─ ChairAwakeningEffect       (dwell 0.75s)
-  │    ├─ Light (amber, culling: excl HorrorOverlay)
-  │    ├─ shadowQuad (Layer: HorrorOverlay)
-  │    └─ legOverlay
-  ├─ BookEffect
-  │    ├─ BookMemoryEffect           (dwell 0.75s)
-  │    ├─ AudioSource ×3 (noise / whisper / chime → Horror mixer)
-  │    └─ ParticleSystem (pages)
-  ├─ CupEffect
-  │    ├─ CupBreachEffect            (dwell 1.0s)
-  │    ├─ crackOverlay (Layer: HorrorOverlay)
-  │    ├─ shards ParticleSystem
-  │    └─ holoMapRoot → HoloMapController.mapContentRoot
-  └─ GuardFX
-       ├─ beaconSource (3D AudioSource)
-       ├─ guideParticles (ParticleSystem)
-       └─ desaturationVolume (Volume, weight=0)
-
-[UI Canvas]
-  └─ WhisperSubtitleController (Screen Space - Overlay)
-       └─ SubtitleText (TextMeshProUGUI)
+ ├─ ChairEffect         ← ChairAwakeningEffect + Light(amber) + shadowQuad + оверлей ножек
+ ├─ BookEffect          ← BookMemoryEffect + 3 AudioSource + ParticleSystem
+ ├─ CupEffect           ← CupBreachEffect + оверлей трещины + осколки + holoMap
+ └─ GuardFX             ← beaconSource (3D), guideParticles, Volume(desaturation)
 ```
 
-Dwell times: Chair **0.75s** / Book **0.75s** / Cup **1.0s**
+- [ ] Связать ссылки в инспекторах (NarrativeManager.nodes: 0=Chair→[1], 1=Book→[2], 2=Cup→[])
+- [ ] `dwellTimeSeconds`: Chair 0.75 / Book 0.75 / Cup 1.0 (чашка мелкая — детекция дрожит сильнее)
 
----
+## 5. ARCameraManager / AROcclusionManager
 
-## §5 · ARCameraManager / AROcclusionManager
-
-- [ ] Light Estimation Mode: **Ambient Intensity + Ambient Color**
-- [ ] Environment Depth Mode: **Best** (Mid/Low devices: Fastest)
+- [ ] Light Estimation: **Ambient Intensity + Ambient Color** (нужно NarrativeContextCollector)
+- [ ] AROcclusionManager → Environment Depth Mode: **Best** (Pixel 9/S26 тянут;
+      при троттлинге ARCore сам деградирует)
 - [ ] Occlusion Preference: **Prefer Environment Occlusion**
-- [ ] Cup shards material: **Opaque or Alpha-Cutout** (NOT transparent — occlusion conflict)
+- [ ] Осколки чашки: материал **Opaque или Alpha-Cutout** — окклюзия рукой корректна
+      только для геометрии, пишущей depth. Прозрачные партиклы рука перекрывать не будет —
+      поэтому осколки = меши, а партиклы лишь пыль вокруг.
 
----
+## 6. URP Asset + Renderer
 
-## §6 · URP Asset + Renderer
+- [ ] **Opaque Texture: ON**, Downsampling: **2x Bilinear** — без этого RealityDistortion
+      рисует чёрное (SampleSceneColor читает именно её)
+- [ ] **HDR: ON** — HDR-цвет трещины (_CrackColor до 2.5) обязан переполнять 1.0 для Bloom
+- [ ] Renderer Features: **AR Background Renderer Feature** (камера-фон + окклюзия в URP)
+- [ ] Post-processing Volume (global): **Bloom** (threshold 1.0, intensity ~0.6) +
+      **Color Adjustments** (Saturation −100) на ОТДЕЛЬНОМ Volume c weight=0 —
+      это и есть desaturationVolume для SceneOneDirector
+- [ ] MSAA: 4x (AR-контента мало, fillrate позволяет), Render Scale: 1.0
+- [ ] Shadows: выключить cascade'ы (Main Light Shadows: OFF) — виртуальная тень стула
+      у нас своя (quad), реальные тени AR-света не нужны и дороги
 
-- [ ] Opaque Texture: **ON**, Downsampling: **2x Bilinear**
-- [ ] HDR: **ON**
-- [ ] Renderer Feature: **AR Background Renderer Feature**
-- [ ] Post-processing: **Bloom** (threshold 1.0, intensity ~0.6)
-- [ ] Color Adjustments Volume (Saturation **−100**) on separate Volume, **weight = 0** (controlled by HorrorSafetyGovernor / guard)
-- [ ] MSAA: **4x**
-- [ ] Render Scale: **1.0** (Mid: 0.9, Low: 0.75 — applied by DeviceTuningProfile)
-- [ ] Main Light Shadows: **OFF**
+## 7. Слои и Culling Matrix
 
----
+| Слой            | Кто в нём                  | Зачем                                          |
+|-----------------|----------------------------|------------------------------------------------|
+| `ARSurfaces`    | плоскости, depth-меши      | raycast-маска; камерой не рендерится           |
+| `HorrorOverlay` | оверлеи дисторсии/трещины  | исключён из света Amber (свет не должен бликовать на собственных оверлеях) |
+| `Holograms`     | карта комнаты, призрак трещины | исключён из десатурации, если захотим оставить голограммы цветными |
 
-## §7 · Layers & Culling Matrix
+- [ ] Physics: снять ВСЕ галочки в Layer Collision Matrix (физика не используется —
+      Auto Sync Transforms OFF, Physics.simulationMode = Script, нулевой бюджет PhysX)
+- [ ] Amber Light → Culling Mask: всё, КРОМЕ HorrorOverlay
 
-| Layer | Contents | Notes |
-|-------|----------|-------|
-| `ARSurfaces` | planes, depth meshes | raycast mask, not rendered |
-| `HorrorOverlay` | distortion / crack overlays | excluded from Amber light |
-| `Holograms` | room map, crack ghost | excluded from desaturation volume |
+## 8. Sentis / YOLO
 
-- [ ] Physics collision matrix: **disable ALL** checks
-- [ ] Auto Sync Transforms: **OFF**
-- [ ] Physics.simulationMode: **Script**
-- [ ] Amber Light Culling Mask: everything **EXCEPT HorrorOverlay**
+- [ ] `yolov8n.onnx` (экспорт: opset 15, imgsz 640, без встроенного NMS) → папка `Assets/Models`
+- [ ] В инспекторе YoloObjectDetector: ModelAsset = импортированная модель
+- [ ] Проверка на устройстве: лог инференса ≤ 15 мс (Vulkan). Если > 25 мс — поднять
+      inferenceIntervalMs до 300 (3.3 Гц всё ещё комфортно для нарратива)
 
----
-
-## §8 · Sentis / YOLO
-
-- [ ] Model: **yolov8n.onnx** (opset 15, imgsz 640, no built-in NMS)
-- [ ] Path: `Assets/Models/yolov8n.onnx`
-- [ ] Target inference latency: **≤15ms** (Vulkan)
-- [ ] Fallback: raise `inferenceIntervalMs` to **300** if latency >25ms
-- [ ] COCO class mapping wired in `YoloObjectDetector`: 56→Chair, 73→Book, 41→Cup
-
----
-
-## §9 · MLLM (Kotlin Plugin)
+## 9. MLLM (Kotlin-плагин)
 
 - [ ] `NarrativeLlmBridge.kt` → `Assets/Plugins/Android/`
-- [ ] Gradle dependency: `com.google.mediapipe:tasks-genai`
-- [ ] Model delivery: **Play Asset Delivery** (install-time) → `filesDir/models/gemma.task`
-- [ ] 8GB RAM device: **Gemma-270M** only; 12GB: Gemma-2B int4 ok
-- [ ] Fallback mode: game runs with preset whisper pools if model absent
+- [ ] `mainTemplate.gradle`: зависимость `com.google.mediapipe:tasks-genai`
+      (версию сверить с актуальной; API класса LlmInference менялось между релизами)
+- [ ] Модель `.task` — через **Play Asset Delivery (install-time)** в `filesDir/models/`
+- [ ] Тест фолбэка: запуск БЕЗ модели — шёпоты идут из заготовок, игра не ломается
+
+## 10. Аудио
+
+- [ ] AudioMixer: группа **Horror** (шёпот, белый шум, маяк, хруст) с exposed-параметром
+      `HorrorVolumeDb` → ссылка в HorrorSafetyGovernor
+- [ ] Все нарративные AudioSource → Output: группа Horror; spatialBlend = 1 (кроме фолбэк-режима маяка)
+- [ ] DSP Buffer Size: Best Performance
+
+## 11. Производительность / термопакет (финальная проверка)
+
+- [ ] `Application.targetFrameRate = 30` в бутстрапе — для медленного хоррора 30 fps
+      неотличимы от 60, а это буквально −40% энергии SoC. Главная анти-троттлинг мера.
+- [ ] Profiler на устройстве, 10 минут геймплея: **GC Alloc в Update-блоке = 0 B**
+      (допустимы разовые аллокации в момент срабатывания узлов и запросов MLLM)
+- [ ] Thermal: `Application.lowMemory` + Android Thermal API через ARCore —
+      при THROTTLING_SEVERE поднять inferenceIntervalMs ×2 (одной строкой)
+- [ ] Privacy-аудит: ни одного сетевого вызова в рантайме (проверить Charles/PCAP),
+      кадры камеры не сохраняются, person-детекции не логируются (только bool-флаг)
+
+## 12. Smoke-тест Сцены 1 (порядок прохождения)
+
+1. Запуск → плоскости найдены → наводимся на стул → 0.75с → янтарный свет + дрожь ножек, тень «сканирует».
+2. Мельком показать книгу камере → тень доворачивается на книгу.
+3. Удержать книгу в кадре → страницы + шум + шёпот (или заготовка) + звон → призрак трещины.
+4. Навестись на чашку → синяя трещина ползёт → рука перекрывает осколки (проверить окклюзию!) → голограмма карты.
+5. Попросить друга войти в кадр на шаге 4 → хоррор гаснет за полсекунды, через ~4с после выхода — медленно возвращается.
+6. Встать и ничего не делать 45с → маяк; 60с → мир обесцвечивается; 75с → партиклы-проводник.
 
 ---
 
-## §10 · Audio
+## 13. Сцена 2 «Картограф» — дельта настройки
 
-- [ ] AudioMixer: **"Horror"** group, exposed parameter `HorrorVolumeDb`
-- [ ] All narrative AudioSources → Output: **Horror** group
-- [ ] `spatialBlend`: **1** (except beacon fallback mode)
-- [ ] DSP Buffer Size: **Best Performance**
-- [ ] Required audio assets:
-  - Whisper beds (×6 per node min), white noise, porcelain chime, breach crunch
-  - Beacon tone, mirror-side ambience, portal tear, crossing stinger
-  - Inverse-side ambient, chapter stinger
+Граф продолжается за Чашку: у узла 2 выставить `nextNodeIndices = [3]`.
 
----
+| # | Узел         | Условие   | Параметры                  | dwell | Эффекты (triggerables)            |
+|---|--------------|-----------|----------------------------|-------|-----------------------------------|
+| 3 | WallEcho     | Proximity | triggerRadius = 1.2        | 0.5   | PortalWindowEffect (d = 0.6 м)    |
+| 4 | SurfaceEcho  | Proximity | triggerRadius = 1.2        | 0.5   | EchoSurfaceEffect                 |
+| 5 | PortalWall   | Gaze      | 12°, maxDist = 6           | 1.0   | PortalWindowEffect (d = 2.0 м)    |
+| 6 | Crossing     | Proximity | triggerRadius = 0.5        | 0.4   | CrossingTransitionEffect          |
 
-## §11 · Performance / Thermal
+- [ ] `runtimeTarget` узлов 3–5 ставит **EchoZonePlacer**, узла 6 — **SceneTwoDirector** (общий якорь с порталом: дверь открывается взглядом, пересекается ногами)
+- [ ] `[Gate2Reality Core]` += EchoZonePlacer, HoloMapController, SceneTwoDirector
+- [ ] XR Origin += **ARAnchorManager** (без него зоны уплывают при уточнении карты)
+- [ ] `NarrativeManager.playerCamera` = Main Camera из XR Origin (нужен Proximity/Gaze)
+- [ ] Quad окна портала: **массив из двух материалов** [PortalWindow, PortalRim]; quad ряби пола: [PortalRim]
+- [ ] Интерьер InvertedWorld: оболочка — материал на Geometry+20 (по умолчанию), реквизит — `material.renderQueue` 2021–2025 (painter's-порядок вглубь)
+- [ ] Префаб интерьера авторится **вглубь локального −Z** якоря (forward якоря смотрит в комнату)
+- [ ] CrossingTransitionEffect: **snapToAnchor = OFF**; Canvas вспышки — Screen Space - Overlay; отдельный global Volume «изнанки» с weight = 0
+- [ ] HoloMapController.mapContentRoot — дочерний объект holographicMapRoot из CupBreachEffect
 
-- [ ] `Application.targetFrameRate`: **30**
-- [ ] GC Alloc target in Update hot-path: **0 B**
-- [ ] Profiler validation: 10-minute gameplay session
-- [ ] Throttling response: on `THROTTLING_SEVERE` → multiply `inferenceIntervalMs ×2`
-- [ ] Privacy audit: **zero network calls**, no frame saving, no person-detection logging
-
----
-
-## §12 · Scene 1 Smoke Test
-
-1. Plane detection → chair in frame 0.75s → amber light + leg shimmer starts ✓
-2. Brief book detection → shadow quad rotates toward book ✓
-3. Hold book in frame 0.75s → pages, noise rise, whisper (or fallback), chime → crack ghost appears ✓
-4. Cup in frame 1.0s → blue crack animation → shards burst → holo-map reveals ✓
-5. Friend enters frame at any step → horror fades to 25% in **0.5s** ✓
-6. Idle 45s → beacon tone at last known anchor ✓
-7. Idle 60s → desaturation volume weight=1 ✓
-8. Idle 75s → guide particles at anchor ✓
+### Смоук-тест Сцены 2
+1. Финал чашки → на голо-карте контур комнаты, 3 пульсирующие метки (фиолетовая — дверь), жёлтая точка ходит за игроком.
+2. Подойти к стене с меткой → окно «лопается» (overshoot ~10%), внутри — холодное зазеркалье; закрыть ладонью — окно перекрывается рукой.
+3. Шёпот изнанки субтитром ~1.2 с после раскрытия (или заготовка из MirrorLines — игра не ждёт MLLM).
+4. Подойти к ряби на полу → круги расходятся, столб пыли, гул снизу.
+5. Посмотреть на большую стену 1 с → дверь 2 м распахивается.
+6. Войти в дверь → вспышка, под ней мир сменяется холодным гримом, стингер главы под пиком вспышки, OnCrossedOver для Сцены 3.
 
 ---
 
-## §13 · Scene 2 "Cartographer" — Delta Settings
+## 14. Финальный оптимизационный паспорт главы (Step 5)
 
-### Graph nodes
-| Node | Kind | Condition | Dwell | Effect |
-|------|------|-----------|-------|--------|
-| 3 | WallEcho | Proximity 1.2m | 0.5s | PortalWindowEffect d=0.6m |
-| 4 | SurfaceEcho | Proximity 1.2m | 0.5s | EchoSurfaceEffect |
-| 5 | PortalWall | Gaze 12° / 6m | 1.0s | PortalWindowEffect d=2.0m |
-| 6 | Crossing | Proximity 0.5m | 0.4s | CrossingTransitionEffect |
+Энергетическая лесенка детектора (главная статья расхода после AR-трекинга):
+- Узлы 0–2: полный YOLO, 5 Гц (~1 Вт) — единственный отрезок, где он нужен.
+- Активация Чашки: `SetPersonOnlyMode(true)` — privacy-вахта 1 Гц, только класс
+  person, одно чтение тензора на якорь (~0.2 Вт). Обещание «гасим хоррор при
+  людях в кадре» действует ВСЮ главу, а не только Сцену 1.
+- Размещение зон: `PlaneDetectionMode.None` — сканирование плоскостей погашено.
+- `OnSceneCompleted`: детектор выключается полностью; `OnDisable` отправляет
+  говернору «кадр чист» (фикс застревания хоррора на 25%, если человек был
+  в кадре в момент выключения).
 
-### Scene additions
-- [ ] `EchoZonePlacer`, `HoloMapController`, `SceneTwoDirector` on **[Gate2Reality Core]**
-- [ ] `ARAnchorManager` on **XR Origin**
-- [ ] Portal window quad: materials array `[PortalWindow, PortalRim]`
-- [ ] Floor ripple quad: `[PortalRim]`
-- [ ] InvertedWorld interior shell: `renderQueue = Geometry+20`
-- [ ] Interior props: `renderQueue` 2021–2025 (painter's order)
-- [ ] All portal prefabs authored local **−Z** of anchor
-- [ ] `CrossingTransitionEffect.snapToAnchor`: **OFF**
-- [ ] Subtitle Canvas: **Screen Space - Overlay**
-- [ ] `HoloMapController.mapContentRoot` = child of `CupBreachEffect.holoMapRoot`
-
-### Scene 2 Smoke Test
-1. Cup finale → holo-map shows room contour + 3 violet pulsing markers + yellow player dot ✓
-2. Approach wall marker → window aperture ruptures with ~10% overshoot, cold mirror interior ✓
-3. Mirror whisper subtitle appears ~1.2s after reveal (or preset fallback) ✓
-4. Approach floor ripples → circles radiate, dust column, bass hum ✓
-5. Gaze large wall 1s → 2m door opens ✓
-6. Enter door → flash, cold grade shift, stinger at peak, `OnCrossedOver` fires ✓
+Чек перед релиз-кандидатом:
+- [ ] Прогон главы с Profiler: GC Alloc = 0 B вне моментов активации узлов
+- [ ] Battery Historian / adb power: ступенька потребления на t(Чашка) видна
+- [ ] Вахта: попросить человека войти в кадр в Сцене 2 — хоррор гаснет за 0.5с
+      даже при 1 Гц инференса (worst-case реакция ~1.5с — приемлемо)
+- [ ] Стык: человек в кадре в момент финальной вспышки — после OnCrossedOver
+      интенсивность возвращается к 1.0 (не застревает)
+- [ ] Полный смоук Сцены 1 (раздел 12) + Сцены 2 (раздел 13) одним прогоном
 
 ---
 
-## §14 · Final Optimization Passport
+## 15. Полевой прогон: HONOR 90 (REA-NX9)
 
-| Stage | YOLO Mode | Hz | Est. Power |
-|-------|-----------|----|-----------|
-| Nodes 0–2 (Scene 1) | Full 5 Hz | 5 | ~1W |
-| Cup activation onwards | Person-only | 1 | ~0.2W |
-| Scene 2 zone placement | PlaneDetectionMode.None | — | — |
-| Scene completed | Detector disabled | 0 | ~0W |
+**Факты устройства:** официальный список ARCore — поддерживается, **Supports
+Depth API** (вся фолбэк-цепочка и окклюзия рукой работают). Snapdragon 7 Gen 1
+Accelerated (Adreno 644), 8/12 ГБ RAM, экран 2664×1200. `minSdkVersion 29`
+покрывает любую прошивку (Android 13 / MagicOS 7.1 и новее).
 
-### Pre-release checklist
-- [ ] Full chapter profiler: **GC Alloc = 0 B** outside node activation
-- [ ] Battery Historian / `adb power`: consumption step visible at Cup trigger
-- [ ] Privacy watch: person enters frame in Scene 2 → horror fades in 0.5s at 1 Hz
-- [ ] Seam test: person in frame at final flash → intensity returns to 1.0 post-`OnCrossedOver`
-- [ ] Complete Scene 1 (§12) + Scene 2 (§13) in single run
+**Профиль (применяет DeviceTuningProfile автоматически, тир Mid):**
+YOLO 300 мс (3.3 Гц), Environment Depth = Fastest, renderScale 0.9, 30 fps cap.
 
----
+- [ ] `DeviceTuningProfile` на `[Gate2Reality Core]`, Script Execution Order =
+      раньше всех (Project Settings → Script Execution Order, −100)
+- [ ] Сборка Development Build (для полевых логов `[Gate2Reality]`)
+- [ ] 12-ГБ версия: Gemma-2B int4 ок; **8-ГБ версия: только Gemma-270M** —
+      MagicOS агрессивно убивает память, 2B-модель спровоцирует OOM-килл
 
-## §15 · Field Test — HONOR 90 (REA-NX9)
+### Протокол прогона (строго по порядку)
+```
+adb logcat -c && adb logcat -v time Unity:I *:S | grep -E "Gate2Reality|Exception"
+```
+1. **Старт:** лог тира (`Тир устройства: Mid ... Adreno (TM) 644`) и
+   `Depth API: поддерживается`. Нет этих строк — дальше не идти.
+2. **Риск №2 (Sentis):** первые строки `YOLO inference+readback: NN ms`.
+   Ожидание на Adreno 644: **20–35 мс**. Если > 45 мс — поднять
+   `midIntervalMs` до 400; если эксепшен на `ReadbackRequest` — сверить
+   версию пакета Sentis (API менялся между 1.x/2.x).
+3. **Риск №1 (ориентация кадра):** навести на стул в ПОРТРЕТЕ. Янтарный свет
+   должен загореться НА стуле. Смещение/мимо → снять видеолог, мне нужны
+   3-4 строки детекций (`Узел ... ждём`) + скрин — патч одной строкой в
+   `ConversionParams.transformation` + маппинг через display matrix.
+   Проверить и в ландшафте.
+4. **Риск №3 (MediaPipe):** лог `isModelReady`; шёпот книги: замерить
+   задержку субтитра. Заготовка вместо генерации — норма (таймаут работает),
+   но если ВСЕГДА заготовка при готовой модели — лог из Kotlin-моста.
+5. **Окклюзия:** рука перед окном портала — окно перекрывается ладонью;
+   рука перед осколками чашки — осколки прячутся за рукой.
+6. **Термопрогон 15 мин** (полная глава + повтор Сцены 1):
+   `adb shell dumpsys thermalservice | grep -A2 Temperature` до/после;
+   `adb shell dumpsys battery | grep temperature`. Троттлинг-статус THROTTLING
+   выше MODERATE на 15-й минуте — повод поднять интервалы YOLO ×1.5.
+7. **Вахта:** второй человек входит в кадр в Сцене 2 — реакция ≤ 1.5 с
+   (1 Гц инференса + фейд 0.5 с).
 
-**Device:** Snapdragon 7 Gen 1 · Adreno 644 · 8/12 GB RAM · Android 14+
-
-| Setting | Value |
-|---------|-------|
-| `minSdkVersion` | 29 |
-| Device tier (DeviceTuningProfile) | Mid |
-| YOLO interval | 300ms (3.3 Hz) |
-| Environment Depth | Fastest |
-| `renderScale` | 0.9 |
-| Frame rate cap | 30 fps |
-| Gemma model | 8GB→270M · 12GB→2B int4 |
-
-### Setup
-- [ ] `DeviceTuningProfile` on **[Gate2Reality Core]**, Script Execution Order: **−100**
-- [ ] Development Build: **enabled**
-- [ ] Logcat filter: `Gate2Reality|Exception`
-
-### Expected metrics
-
-| Metric | Green | Red |
-|--------|-------|-----|
-| YOLO int8 GPU 640² | 20–35ms | >45ms |
-| FPS | stable 30 | <27 |
-| Gemma-2B latency | 1.5–3s (timeout fallback) | >5s |
-| Battery 15min chapter | 4–6% | >9% |
-| Privacy reaction (2nd person) | ≤1.5s | >2s |
-
-### Fallback
-- [ ] If YOLO >45ms → raise `midIntervalMs` to **400**
-- [ ] 15-minute thermal test validation completed
-- [ ] Three device-risk mitigations verified:
-  - Frame orientation → `ConversionParams.transformation`
-  - Sentis signatures → `ReadbackRequest` version check
-  - MediaPipe genai API → `LlmInferenceOptions` version validation
+### Ожидаемые числа Honor 90 (для сверки)
+| Метрика                     | Ожидание        | Красная зона |
+|-----------------------------|-----------------|--------------|
+| YOLO int8 GPU, 640²         | 20–35 мс        | > 45 мс      |
+| FPS (cap 30)                | стабильные 30   | < 27         |
+| Gemma-2B латентность (12ГБ) | 1.5–3 с (таймаут спасает) | OOM-килл |
+| Батарея за 15 мин главы     | 4–6%            | > 9%         |

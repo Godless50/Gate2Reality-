@@ -1,36 +1,45 @@
 using UnityEngine;
-using Gate2Reality.Narrative;
 
 namespace Gate2Reality.Effects
 {
-    [RequireComponent(typeof(AudioSource))]
+    using Gate2Reality.Narrative;
+
+    /// <summary>
+    /// База для всех нарративных эффектов Сцены 1. Снимает бойлерплейт:
+    ///  - реализация ITriggerable (id, IsActive, Cancel);
+    ///  - перемещение корня эффекта к позе физического объекта-якоря;
+    ///  - защита от повторного срабатывания (нарративные узлы — one-shot).
+    ///
+    /// Производные классы переопределяют OnTriggered/OnCancelled и ведут
+    /// свою анимацию в OnEffectUpdate (вызывается только пока активен —
+    /// неактивные эффекты не тратят ни наносекунды CPU).
+    /// </summary>
     public abstract class TriggerableEffectBase : MonoBehaviour, ITriggerable
     {
-        [SerializeField] private string triggerId;
+        [Header("ITriggerable")]
+        [SerializeField] private string triggerId = "unnamed_effect";
+
+        [Tooltip("Прилипать ли к позе физического объекта при срабатывании")]
         [SerializeField] private bool snapToAnchor = true;
 
         public string TriggerId => triggerId;
         public bool IsActive { get; private set; }
-        public Pose Anchor { get; private set; }
-        public float TimeSinceTriggered { get; private set; }
 
-        private bool _finished;
+        protected Pose Anchor { get; private set; }
+        protected float TimeSinceTriggered { get; private set; }
 
         public void Trigger(in Pose worldAnchor)
         {
-            if (IsActive) return;
-            IsActive = true;
-            _finished = false;
-            TimeSinceTriggered = 0f;
-            Anchor = worldAnchor;
+            if (IsActive) return; // one-shot: повторные детекции игнорируем
 
+            Anchor = worldAnchor;
             if (snapToAnchor)
             {
-                transform.position = worldAnchor.position;
-                transform.rotation = worldAnchor.rotation;
+                transform.SetPositionAndRotation(worldAnchor.position, worldAnchor.rotation);
             }
 
-            gameObject.SetActive(true);
+            TimeSinceTriggered = 0f;
+            IsActive = true;
             OnTriggered();
         }
 
@@ -41,18 +50,15 @@ namespace Gate2Reality.Effects
             OnCancelled();
         }
 
-        protected void MarkFinished()
-        {
-            _finished = true;
-            IsActive = false;
-        }
-
         private void Update()
         {
             if (!IsActive) return;
             TimeSinceTriggered += Time.deltaTime;
             OnEffectUpdate(Time.deltaTime);
         }
+
+        /// <summary>Эффект сообщает, что отыграл до конца (для IsActive-ожиданий графа).</summary>
+        protected void MarkFinished() => IsActive = false;
 
         protected abstract void OnTriggered();
         protected virtual void OnCancelled() { }

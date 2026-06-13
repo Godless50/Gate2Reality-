@@ -1,53 +1,84 @@
-package com.gate2reality
+package com.gate2reality.llm
 
+import android.app.Activity
 import android.os.Handler
 import android.os.HandlerThread
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
-import com.google.mediapipe.tasks.genai.llminference.LlmInference.LlmInferenceOptions
-import com.unity3d.player.UnityPlayer
 import java.io.File
 
-object NarrativeLlmBridge {
+/**
+ * Android-сторона моста к on-device MLLM (MediaPipe LLM Inference API).
+ * Кладётся в Assets/Plugins/Android вместе с зависимостью
+ * com.google.mediapipe:tasks-genai в mainTemplate.gradle.
+ *
+ * МОДЕЛЬ: gemma-2b-it int4 (.task), доставляется через Play Asset Delivery
+ * (install-time pack) в filesDir — НЕ в APK (лимит размера) и НЕ из сети
+ * в рантайме (privacy-обещание «всё на устройстве» держим честно).
+ *
+ * ПОТОКИ: инференс на выделенном HandlerThread с пониженным приоритетом —
+ * не воюем за big-ядра с рендером Unity и не провоцируем троттлинг.
+ */
+interface LlmCallback {
+    fun onResult(text: String)
+}
 
-    private val handlerThread = HandlerThread("LlmInference").also { it.start() }
-    private val handler = Handler(handlerThread.looper)
+class NarrativeLlmBridge private constructor(activity: Activity) {
 
-    private var inference: LlmInference? = null
+    // Захватываем application context сразу — не держим ссылку на Activity
+    // (утечка при повороте экрана) и не лезем за ним из воркер-потока.
+    private val appContext = activity.applicationContext
 
-    private fun ensureLoaded() {
-        if (inference != null) return
-        val context = UnityPlayer.currentActivity.applicationContext
-        val modelPath = File(context.filesDir, "models/gemma.task").absolutePath
-        val options = LlmInferenceOptions.builder()
-            .setModelPath(modelPath)
-            .setMaxTokens(64)
-            .setTopK(40)
-            .setTemperature(0.8f)
-            .build()
-        inference = LlmInference.createFromOptions(context, options)
+    companion object {
+        @Volatile private var instance: NarrativeLlmBridge? = null
+
+        @JvmStatic
+        fun getInstance(activity: Activity): NarrativeLlmBridge =
+            instance ?: synchronized(this) {
+                instance ?: NarrativeLlmBridge(activity).also { instance = it }
+            }
     }
 
-    @JvmStatic
-    fun requestWhisper(prompt: String, gameObject: String, callbackMethod: String) {
-        handler.post {
-            try {
-                ensureLoaded()
-                val result = inference!!.generateResponse(
-                    "You are a ghost narrator. In one short sentence (max 12 words), respond to: $prompt"
-                )
-                UnityPlayer.UnitySendMessage(gameObject, callbackMethod, result.trim())
-            } catch (e: Exception) {
-                // Timeout or error — Unity side handles fallback via timer
-                android.util.Log.w("Gate2Reality", "LLM error: ${e.message}")
+    private val modelFile = File(activity.filesDir, "models/gemma-2b-it-int4.task")
+    private var llm: LlmInference? = null
+
+    private val workerThread = HandlerThread(
+        "Gate2RealityLLM",
+        android.os.Process.THREAD_PRIORITY_BACKGROUND
+    ).apply { start() }
+    private val worker = Handler(workerThread.looper)
+
+    init {
+        if (modelFile.exists()) {
+            // Ленивая инициализация на воркере: первая загрузка модели ~1-2с,
+            // главный поток (и Unity) этого не почувствуют.
+            worker.post {
+                try {
+                    val options = LlmInference.LlmInferenceOptions.builder()
+                        .setModelPath(modelFile.absolutePath)
+                        .setMaxTokens(96)
+                        .setTemperature(0.9f)   // шёпоту положено быть непредсказуемым
+                        .setTopK(40)
+                        .build()
+                    llm = LlmInference.createFromOptions(appContext, options)
+                } catch (_: Throwable) {
+                    llm = null // C#-сторона уйдёт в фолбэк по isModelReady()
+                }
             }
         }
     }
 
-    @JvmStatic
-    fun shutdown() {
-        handler.post {
-            inference?.close()
-            inference = null
+    /** Дёргается из C# (Awake). До конца ленивой инициализации честно вернёт false. */
+    fun isModelReady(): Boolean = llm != null
+
+    /** Неблокирующая генерация; коллбэк прилетит с воркер-потока. */
+    fun generateAsync(prompt: String, maxTokens: Int, callback: LlmCallback) {
+        worker.post {
+            val text = try {
+                llm?.generateResponse(prompt) ?: ""
+            } catch (_: Throwable) {
+                "" // пустая строка -> C#-сторона подставит заготовку
+            }
+            callback.onResult(text)
         }
     }
 }

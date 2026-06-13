@@ -1,69 +1,97 @@
-using System.Collections;
-using UnityEngine;
 using TMPro;
-using Gate2Reality.Narrative;
+using UnityEngine;
 
 namespace Gate2Reality.UI
 {
-    public class WhisperSubtitleController : MonoBehaviour
+    /// <summary>
+    /// Призрачные субтитры для шёпотов MLLM. Аудио-клип шёпота — нечленораздельная
+    /// «подложка» (атмосфера), смысл несёт текст: это решает проблему
+    /// «MLLM отдаёт текст, а источник играет клип» без TTS (роботичный голос
+    /// убил бы хоррор) и бесплатно по перформансу.
+    ///
+    /// Эффект печатной машинки — через TMP maxVisibleCharacters:
+    /// НОЛЬ аллокаций (никаких Substring/StringBuilder в Update),
+    /// строка задаётся один раз в Show().
+    ///
+    /// Размещение: Screen Space - Overlay, нижняя треть экрана,
+    /// полупрозрачный текст с лёгким свечением (материал TMP).
+    /// </summary>
+    [DisallowMultipleComponent]
+    public sealed class WhisperSubtitleController : MonoBehaviour
     {
-        [SerializeField] private TextMeshProUGUI subtitleText;
-        [SerializeField] private OnDeviceNarrativeGenerator generator;
-        [SerializeField] private float charRevealInterval = 0.04f;
-        [SerializeField] private float holdDuration = 3f;
-        [SerializeField] private float fadeOutDuration = 1f;
+        [Header("UI")]
+        [SerializeField] private CanvasGroup canvasGroup;
+        [SerializeField] private TMP_Text label;
 
-        private string _queued;
-        private bool _playing;
+        [Header("Тайминги")]
+        [SerializeField] private float fadeSeconds = 0.6f;
+        [Tooltip("Скорость «печати», знаков/сек. 16-20 = темп шёпота")]
+        [SerializeField] private float charsPerSecond = 18f;
+        [Tooltip("Пауза после полного появления текста до растворения")]
+        [SerializeField] private float holdSeconds = 2.5f;
+
+        private enum Phase : byte { Hidden, FadeIn, Reveal, Hold, FadeOut }
+        private Phase _phase = Phase.Hidden;
+        private float _phaseTimer;
+        private int _totalChars;
 
         private void Awake()
         {
-            generator.OnWhisperReady += Enqueue;
-            if (subtitleText != null) subtitleText.maxVisibleCharacters = 0;
+            canvasGroup.alpha = 0f;
+            label.text = string.Empty;
         }
 
-        private void OnDestroy() => generator.OnWhisperReady -= Enqueue;
-
-        private void Enqueue(string text)
+        /// <summary>Показать реплику. Повторный вызов перезапускает показ новым текстом.</summary>
+        public void Show(string text)
         {
-            _queued = text;
-            if (!_playing) StartCoroutine(PlayRoutine());
+            if (string.IsNullOrEmpty(text)) return;
+
+            label.text = text;                 // единственная «строковая» операция
+            label.maxVisibleCharacters = 0;
+            _totalChars = text.Length;
+            SetPhase(Phase.FadeIn);
         }
 
-        private IEnumerator PlayRoutine()
+        private void Update()
         {
-            _playing = true;
-            string text = _queued;
-            _queued = null;
+            if (_phase == Phase.Hidden) return; // спящий субтитр бесплатен
+            _phaseTimer += Time.deltaTime;
 
-            if (subtitleText == null) { _playing = false; yield break; }
-
-            subtitleText.text = text;
-            subtitleText.maxVisibleCharacters = 0;
-            subtitleText.alpha = 1f;
-            subtitleText.gameObject.SetActive(true);
-
-            // Zero-GC typewriter via maxVisibleCharacters
-            for (int i = 0; i <= text.Length; i++)
+            switch (_phase)
             {
-                subtitleText.maxVisibleCharacters = i;
-                yield return new WaitForSeconds(charRevealInterval);
+                case Phase.FadeIn:
+                    canvasGroup.alpha = Mathf.Clamp01(_phaseTimer / fadeSeconds);
+                    if (_phaseTimer >= fadeSeconds) SetPhase(Phase.Reveal);
+                    break;
+
+                case Phase.Reveal:
+                    // int-каст монотонно растёт — TMP перестраивает меш только
+                    // при реальном изменении количества видимых знаков.
+                    int visible = (int)(_phaseTimer * charsPerSecond);
+                    label.maxVisibleCharacters = visible;
+                    if (visible >= _totalChars) SetPhase(Phase.Hold);
+                    break;
+
+                case Phase.Hold:
+                    if (_phaseTimer >= holdSeconds) SetPhase(Phase.FadeOut);
+                    break;
+
+                case Phase.FadeOut:
+                    canvasGroup.alpha = 1f - Mathf.Clamp01(_phaseTimer / fadeSeconds);
+                    if (_phaseTimer >= fadeSeconds)
+                    {
+                        label.text = string.Empty;
+                        SetPhase(Phase.Hidden);
+                    }
+                    break;
             }
+        }
 
-            yield return new WaitForSeconds(holdDuration);
-
-            float elapsed = 0f;
-            while (elapsed < fadeOutDuration)
-            {
-                elapsed += Time.deltaTime;
-                subtitleText.alpha = 1f - elapsed / fadeOutDuration;
-                yield return null;
-            }
-
-            subtitleText.gameObject.SetActive(false);
-            _playing = false;
-
-            if (_queued != null) StartCoroutine(PlayRoutine());
+        private void SetPhase(Phase p)
+        {
+            _phase = p;
+            _phaseTimer = 0f;
+            if (p == Phase.Reveal) canvasGroup.alpha = 1f;
         }
     }
 }

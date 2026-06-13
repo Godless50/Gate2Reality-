@@ -1,61 +1,80 @@
 using UnityEngine;
 using UnityEngine.XR.ARFoundation;
-using Gate2Reality.Detection;
 
 namespace Gate2Reality.Narrative
 {
-    [RequireComponent(typeof(OnDeviceNarrativeGenerator))]
-    public class NarrativeContextCollector : MonoBehaviour
+    using Gate2Reality.Detection;
+
+    /// <summary>
+    /// Сборщик контекста для MLLM: подписывается на ARCore Light Estimation
+    /// и сырой поток YOLO-детекций, копит состояние и по запросу пакует его
+    /// в NarrativeContext (struct, на стеке, без аллокаций).
+    ///
+    /// ТРЕБОВАНИЕ: на ARCameraManager включить Light Estimation =
+    /// Ambient Intensity + Ambient Color (войдёт в чек-лист Step 5).
+    /// </summary>
+    [DisallowMultipleComponent]
+    public sealed class NarrativeContextCollector : MonoBehaviour
     {
         [SerializeField] private ARCameraManager cameraManager;
-        [SerializeField] private ARPlaneManager planeManager;
         [SerializeField] private YoloObjectDetector detector;
-        [SerializeField] private float updateInterval = 2f;
 
-        private OnDeviceNarrativeGenerator _generator;
-        private float _timer;
-        private int _detectionBitmask;
+        private float _brightness = 0.5f;       // экспоненциальное сглаживание
+        private float _kelvin;                  // 0 = неизвестно
+        private int _seenMask;
 
-        private void Awake()
+        private void OnEnable()
         {
-            _generator = GetComponent<OnDeviceNarrativeGenerator>();
-            detector.OnRawDetection += AccumulateDetection;
+            cameraManager.frameReceived += OnFrame;
+            detector.OnRawDetection += OnDetection;
         }
 
-        private void OnDestroy() => detector.OnRawDetection -= AccumulateDetection;
-
-        private void AccumulateDetection(DetectionEvent evt)
+        private void OnDisable()
         {
-            _detectionBitmask |= 1 << (int)evt.Label;
+            cameraManager.frameReceived -= OnFrame;
+            detector.OnRawDetection -= OnDetection;
         }
 
-        private void Update()
+        private void OnFrame(ARCameraFrameEventArgs args)
         {
-            _timer += Time.deltaTime;
-            if (_timer < updateInterval) return;
-            _timer = 0f;
-
-            float ambientIntensity = 1f;
-            if (cameraManager != null &&
-                cameraManager.TryGetIntrinsics(out var _) &&
-                cameraManager.currentLightEstimation.averageBrightness.HasValue)
+            // Сглаживаем, чтобы шёпот не «мигал» от пролетевшей тени.
+            if (args.lightEstimation.averageBrightness.HasValue)
             {
-                ambientIntensity = cameraManager.currentLightEstimation.averageBrightness.Value;
+                _brightness = Mathf.Lerp(_brightness,
+                    args.lightEstimation.averageBrightness.Value, 0.05f);
             }
-
-            int planeCount = 0;
-            foreach (var _ in planeManager.trackables) planeCount++;
-            int roomHeuristic = planeCount < 3 ? 0 : planeCount < 8 ? 1 : 2;
-
-            var ctx = new NarrativeContext
+            if (args.lightEstimation.averageColorTemperature.HasValue)
             {
-                DetectionBitmask = _detectionBitmask,
-                AmbientIntensity = ambientIntensity,
-                RoomHeuristic = roomHeuristic
-            };
+                _kelvin = args.lightEstimation.averageColorTemperature.Value;
+            }
+        }
 
-            _generator.SetContext(in ctx);
-            _detectionBitmask = 0;
+        private void OnDetection(DetectionEvent evt)
+        {
+            _seenMask |= 1 << (int)evt.Label;
+        }
+
+        /// <summary>Снимок контекста под текущий фокус-объект.</summary>
+        public NarrativeContext Capture(NarrativeLabel focus)
+        {
+            return new NarrativeContext(focus, _seenMask, _brightness, _kelvin, InferRoom());
+        }
+
+        /// <summary>
+        /// Эвристика комнаты по набору увиденных объектов. Когда YOLO-модель
+        /// расширится (стол, диван, холодильник...) — эвристика станет богаче,
+        /// интерфейс не изменится.
+        /// </summary>
+        private RoomType InferRoom()
+        {
+            bool chair = (_seenMask & (1 << (int)NarrativeLabel.Chair)) != 0;
+            bool book = (_seenMask & (1 << (int)NarrativeLabel.Book)) != 0;
+            bool cup = (_seenMask & (1 << (int)NarrativeLabel.Cup)) != 0;
+
+            if (chair && book) return RoomType.Office;
+            if (cup && !book) return RoomType.Kitchen;
+            if (chair) return RoomType.LivingRoom;
+            return RoomType.Unknown;
         }
     }
 }

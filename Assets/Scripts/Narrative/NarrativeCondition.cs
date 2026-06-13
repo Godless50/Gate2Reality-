@@ -1,101 +1,125 @@
-using System;
 using UnityEngine;
 
 namespace Gate2Reality.Narrative
 {
-    public enum NarrativeLabel : byte
-    {
-        None,
-        Chair,
-        Book,
-        Cup,
-        EchoZone,
-        Portal
-    }
-
+    /// <summary>Тип условия срабатывания нарративного узла.</summary>
     public enum ConditionType : byte
     {
-        SemanticDetection,
-        Proximity,
-        Gaze
+        /// <summary>Сцена 1: YOLO-детекция физического объекта (chair/book/cup).</summary>
+        SemanticDetection = 0,
+        /// <summary>Сцена 2: игрок физически подошёл к точке (одометрия XR Origin,
+        /// БЕЗ геолокации — чистый ARCore-трекинг).</summary>
+        Proximity = 1,
+        /// <summary>Сцена 2: игрок смотрит на точку (конус взгляда камеры).</summary>
+        Gaze = 2
     }
 
-    [Serializable]
-    public class NarrativeCondition
+    /// <summary>
+    /// Условие узла графа. Сознательно НЕ полиморфизм через [SerializeReference]:
+    /// плоский класс с enum-переключателем — дружелюбнее к инспектору, к
+    /// сериализации и к zero-GC оценке (никаких виртуальных вызовов в Update).
+    ///
+    /// Semantic-условия питаются извне через NarrativeManager.ReportDetection.
+    /// Пространственные (Proximity/Gaze) оцениваются менеджером каждый кадр —
+    /// это дешёвая векторная математика без рейкастов.
+    ///
+    /// runtimeTarget для пространственных условий обычно НЕ задаётся в редакторе:
+    /// эхо-зоны Сцены 2 размещаются процедурно (EchoZonePlacer, Step 2) и
+    /// привязываются через NarrativeManager.SetNodeRuntimeTarget().
+    /// </summary>
+    [System.Serializable]
+    public sealed class NarrativeCondition
     {
-        public ConditionType type;
+        public ConditionType type = ConditionType.SemanticDetection;
+
+        [Header("SemanticDetection")]
+        [Tooltip("Какой физический объект должен найти YOLO-детектор")]
         public NarrativeLabel requiredLabel;
-        public float minConfidence = 0.5f;
-        public float maxBoundsRadius = 2f;
+        [Tooltip("Минимальный confidence YOLO (ТЗ Сцены 1: > 0.85)")]
+        [Range(0f, 1f)] public float minConfidence = 0.85f;
+        [Tooltip("Макс. радиус объекта, м (стул: < 1.5). 0 = не проверять")]
+        public float maxBoundsRadius = 1.5f;
 
-        [NonSerialized] public Transform runtimeTarget;
+        [Header("Proximity / Gaze")]
+        [Tooltip("Якорь условия. Для процедурных зон ставится в рантайме")]
+        public Transform runtimeTarget;
+        [Tooltip("Proximity: радиус срабатывания, м")]
+        public float triggerRadius = 1.2f;
+        [Tooltip("Gaze: полуугол конуса взгляда, градусы")]
+        public float maxGazeAngleDeg = 12f;
+        [Tooltip("Gaze: дальше этого расстояния взгляд не считается, м")]
+        public float maxGazeDistance = 6f;
 
-        public float triggerRadius = 1.5f;
-        public float maxGazeAngleDeg = 15f;
-        public float maxGazeDistance = 3f;
-
-        private Pose _lastKnownAnchor;
-        private bool _hasKnownAnchor;
-
+        /// <summary>Проверка YOLO-детекции (только для SemanticDetection).</summary>
         public bool MatchesDetection(in DetectionEvent evt)
         {
             if (type != ConditionType.SemanticDetection) return false;
             if (evt.Label != requiredLabel) return false;
             if (evt.Confidence < minConfidence) return false;
-            if (evt.BoundsRadius > maxBoundsRadius) return false;
-            _lastKnownAnchor = evt.WorldPose;
-            _hasKnownAnchor = true;
+            if (maxBoundsRadius > 0f && evt.BoundsRadius > maxBoundsRadius) return false;
             return true;
         }
 
-        public bool EvaluateSpatial(Transform cameraTransform, out Pose resultPose)
+        /// <summary>
+        /// Покадровая оценка пространственных условий. Чистая арифметика:
+        /// квадраты расстояний (без корня, где можно) и один Dot для угла.
+        /// </summary>
+        public bool EvaluateSpatial(Transform player, out Pose anchor)
         {
-            resultPose = default;
-            if (runtimeTarget == null) return false;
+            anchor = default;
+            if (runtimeTarget == null || player == null) return false;
 
-            Vector3 toTarget = runtimeTarget.position - cameraTransform.position;
+            Vector3 targetPos = runtimeTarget.position;
+            Vector3 toTarget = targetPos - player.position;
 
-            if (type == ConditionType.Proximity)
+            switch (type)
             {
-                if (toTarget.magnitude <= triggerRadius)
+                case ConditionType.Proximity:
                 {
-                    resultPose = new Pose(runtimeTarget.position, runtimeTarget.rotation);
+                    // Сравниваем квадраты — корень не нужен.
+                    if (toTarget.sqrMagnitude > triggerRadius * triggerRadius) return false;
+                    anchor = new Pose(targetPos, runtimeTarget.rotation);
                     return true;
                 }
-                return false;
-            }
-
-            if (type == ConditionType.Gaze)
-            {
-                float dist = toTarget.magnitude;
-                if (dist > maxGazeDistance) return false;
-                float angle = Vector3.Angle(cameraTransform.forward, toTarget);
-                if (angle <= maxGazeAngleDeg)
+                case ConditionType.Gaze:
                 {
-                    resultPose = new Pose(runtimeTarget.position, runtimeTarget.rotation);
+                    float sqrDist = toTarget.sqrMagnitude;
+                    if (sqrDist > maxGazeDistance * maxGazeDistance) return false;
+                    if (sqrDist < 1e-6f) return true; // стоим в точке — засчитано
+
+                    // cos сравнение вместо Angle(): без acos, дешевле.
+                    float cosAngle = Vector3.Dot(player.forward,
+                                                 toTarget / Mathf.Sqrt(sqrDist));
+                    if (cosAngle < Mathf.Cos(maxGazeAngleDeg * Mathf.Deg2Rad)) return false;
+
+                    anchor = new Pose(targetPos, runtimeTarget.rotation);
                     return true;
                 }
-                return false;
+                default:
+                    return false; // Semantic кормится через ReportDetection
             }
+        }
 
+        /// <summary>Известен ли якорь заранее (для прайминга guard-маяка).</summary>
+        public bool TryGetKnownAnchor(out Pose anchor)
+        {
+            if (runtimeTarget != null)
+            {
+                anchor = new Pose(runtimeTarget.position, runtimeTarget.rotation);
+                return true;
+            }
+            anchor = default;
             return false;
         }
 
-        public bool TryGetKnownAnchor(out Pose anchor)
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        public string Describe() => type switch
         {
-            anchor = _lastKnownAnchor;
-            return _hasKnownAnchor;
-        }
-
-        public string Describe()
-        {
-            return type switch
-            {
-                ConditionType.SemanticDetection => $"Detect {requiredLabel} (conf≥{minConfidence:F2})",
-                ConditionType.Proximity => $"Proximity to {runtimeTarget?.name ?? "?"} ≤{triggerRadius}m",
-                ConditionType.Gaze => $"Gaze at {runtimeTarget?.name ?? "?"} ≤{maxGazeAngleDeg}°",
-                _ => "Unknown"
-            };
-        }
+            ConditionType.SemanticDetection => $"YOLO:{requiredLabel} conf>{minConfidence}",
+            ConditionType.Proximity => $"Proximity r={triggerRadius}m -> {(runtimeTarget ? runtimeTarget.name : "<runtime>")}",
+            ConditionType.Gaze => $"Gaze {maxGazeAngleDeg}deg -> {(runtimeTarget ? runtimeTarget.name : "<runtime>")}",
+            _ => "?"
+        };
+#endif
     }
 }

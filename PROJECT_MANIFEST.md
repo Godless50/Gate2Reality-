@@ -1,186 +1,163 @@
-# Gate2Reality — Project Manifest
-**Version:** v1.0-fieldtest · Chapter I complete · Target: Android 15
+# Gate2Reality — Манифест проекта (Глава I, кодовая база v1.0-fieldtest)
+
+Иммерсивная нарративная AR-игра для Android. Unity (URP) + AR Foundation + ARCore,
+on-device YOLO (Unity Sentis) для семантики, on-device MLLM (MediaPipe/Gemma) для
+генеративных шёпотов. Без геолокации, без сети, кадры камеры не покидают устройство.
+
+**Объём:** 24 C#-файла, 4 шейдера, 1 Kotlin-плагин, чек-лист на 15 разделов (~4300 строк).
+**Статус:** код-комплит для Главы I, верифицирован симуляциями; ожидает полевого прогона
+на HONOR 90 (поддержка ARCore + Depth API подтверждена по официальному списку).
 
 ---
 
-## Overview
-
-Immersive narrative AR game for Android. Physical objects in the real room (chair, book, cup) are semantic triggers that unlock horror effects, generative whispers, and ultimately a portal to an inverted mirror-world.
-
-- **Engine:** Unity (URP) + AR Foundation 6 + ARCore
-- **ML:** YOLOv8n int8 via Unity Sentis 2.x · MediaPipe Gemma (on-device)
-- **Privacy:** zero network calls · camera frames never saved · person detection not logged
-
----
-
-## File Map
-
-### Gate2Reality.Narrative `Assets/Scripts/Narrative/`
-
-| File | Purpose |
-|------|---------|
-| `ITriggerable.cs` | Effect contract; `Trigger(in Pose)` / `Cancel()` |
-| `NarrativeCondition.cs` | Node conditions: semantic detection · proximity · gaze; enums `NarrativeLabel`, `ConditionType` |
-| `NarrativeNode.cs` | Serializable graph node with dwell-time accumulator and edge list |
-| `NarrativeManager.cs` | FSM controller; Guard Node cycle 45 s→beacon · 60 s→desaturation · 75 s→particles |
-| `INarrativeGenerator.cs` | Generator interface + `NarrativeContext` struct (bitmask · light · room heuristic) |
-| `NarrativeContextCollector.cs` | Aggregates AR light estimation + detection bitmask; updates generator every 2 s |
-| `OnDeviceNarrativeGenerator.cs` | Kotlin bridge with 3 s timeout; fallback pools (2 per node); round-robin |
-
-### Gate2Reality.Detection `Assets/Scripts/Detection/`
-
-| File | Purpose |
-|------|---------|
-| `DetectionEvent.cs` | Readonly struct: `Label · WorldPose · Confidence · BoundsRadius` (zero-GC) |
-| `YoloObjectDetector.cs` | CPU frame capture → Sentis GPU inference → pre-allocated NMS → `DetectionEvent` emit; person-only mode |
-| `DepthPoseProjector.cs` | 2D→3D: ARCore Depth API → plane raycast → fixed-depth approximation |
-
-### Gate2Reality.Effects `Assets/Scripts/Effects/`
-
-| File | Purpose |
-|------|---------|
-| `TriggerableEffectBase.cs` | Abstract one-shot base: anchor snap · lifecycle guards · `MarkFinished()` |
-| `ChairAwakeningEffect.cs` | Amber breathing light + shader distortion ramp + shadow-quad hint pointer |
-| `BookMemoryEffect.cs` | 5-phase FSM: NoiseRise → Whispering → CupHint → NoiseFall → Done |
-| `CupBreachEffect.cs` | Crack animation → shard burst → holo-map reveal |
-
-### Gate2Reality.Scene `Assets/Scripts/Scene/`
-
-| File | Purpose |
-|------|---------|
-| `SceneOneDirector.cs` | Wires detector → projector → narrative manager; guard events; person-mode switch at node 2 |
-
-### Gate2Reality.SceneTwo `Assets/Scripts/SceneTwo/`
-
-| File | Purpose |
-|------|---------|
-| `EchoZone.cs` | Anchor marker with surface metadata (`EchoSurface` enum) |
-| `EchoZonePlacer.cs` | Greedy placement on classified ARCore planes; ring fallback; `PlacedZone` readonly struct |
-| `HoloMapController.cs` | One-time top-down map: plane contour lines + zone pings + live player dot |
-| `SceneTwoDirector.cs` | Echo whisper sequencing; zone placement trigger; node 6 crossing anchor |
-| `PortalWindowEffect.cs` | Aperture animation via `easeOutBack` (~10 % overshoot); drives `_Aperture` shader property |
-| `EchoSurfaceEffect.cs` | Floor ripple via aperture modulation + dust particles + bass hum |
-| `CrossingTransitionEffect.cs` | Flash → world swap → `OnCrossedOver` event; Canvas Screen Space Overlay |
-
-### Gate2Reality.Safety `Assets/Scripts/Safety/`
-
-| File | Purpose |
-|------|---------|
-| `HorrorSafetyGovernor.cs` | Human presence → scale to 25 % in 0.5 s; global `_HorrorScale` shader keyword |
-| `DeviceTuningProfile.cs` | Runtime tier detection (Flagship / Mid / Low); applies render scale + YOLO Hz; exec order −100 |
-
-### Gate2Reality.UI `Assets/Scripts/UI/`
-
-| File | Purpose |
-|------|---------|
-| `WhisperSubtitleController.cs` | Zero-GC typewriter via `maxVisibleCharacters`; fade-out; queue for rapid events |
-
-### Shaders `Assets/Shaders/` — URP, half precision, mobile-optimised
-
-| Shader | Technique |
-|--------|-----------|
-| `RealityDistortion.shader` | Flow-noise UV distortion + crack mask driven by `_BreachProgress`; `_HorrorScale` global |
-| `PortalWindow.shader` | Circular aperture cutout; stencil write 1 inside hole; rim glow |
-| `InvertedWorld.shader` | Reads stencil 1; `ZTest Always`; front-cull + Z-flip for mirror interior; cold colour grade |
-| `PortalRim.shader` | Additive rim ring at aperture edge; pulse via `sin(_Time.y)` |
-
-### Native `Assets/Plugins/Android/`
-
-| File | Purpose |
-|------|---------|
-| `NarrativeLlmBridge.kt` | MediaPipe LLM inference on background `HandlerThread`; `UnitySendMessage` callback; lazy model load |
-
-### Models `Assets/Models/`
-Place `yolov8n.onnx` (opset 15, imgsz 640, no built-in NMS) and optionally `gemma.task` here.
-Gemma is also deliverable via Play Asset Delivery → `filesDir/models/`.
-
----
-
-## Data Flow
+## Архитектура (поток данных)
 
 ```
-ARCamera (YUV)
-    │
-    ▼
-YoloObjectDetector
-  ├─ GPU inference (Sentis, 5 Hz)
-  ├─ NMS on pre-allocated Candidate[]
-  ├─ OnRawDetection ──────────────────► SceneOneDirector
-  │                                          │
-  │                                          ▼
-  │                                   DepthPoseProjector
-  │                              (Depth API → plane → approx)
-  │                                          │
-  └─ OnHumanPresenceChanged ─► HorrorSafetyGovernor
-                                        │
-                               NarrativeManager.ReportDetection(DetectionEvent)
-                                        │
-                              ┌─────────┴──────────┐
-                              │  Guard Node FSM     │
-                              │  45 s→beacon        │
-                              │  60 s→desaturate    │
-                              │  75 s→particles     │
-                              └─────────┬──────────┘
-                                        │ OnNodeActivated
-                              ┌─────────┴──────────────────────────┐
-                              │         │              │            │
-                         ChairEffect  BookEffect   CupEffect  SceneOneDirector
-                                                        │        (mode switch)
-                                                   HoloMapController
-                                                   SceneTwoDirector
-                                                   (EchoZonePlacer)
+ARCameraManager ──YUV──> YoloObjectDetector (Sentis, YOLOv8n int8)
+                              │ DetectionEvent        │ OnRawDetection / OnHumanPresenceChanged
+                              v                       v
+DepthPoseProjector <──2D──> NarrativeManager     SceneOneDirector   HorrorSafetyGovernor
+(Depth->плоскости->маркер)   (Trigger-Action граф,  SceneTwoDirector  (_HorrorScale, дакинг)
+                              Guard Node 45с)            │
+                              │ Trigger(Pose)            │ RequestWhisper / RequestMirrorWhisper
+                              v                          v
+                    ITriggerable-эффекты        OnDeviceNarrativeGenerator <─> NarrativeLlmBridge.kt
+                    (Сцена 1 и Сцена 2)         (префетч, таймаут 3с,          (MediaPipe, Gemma)
+                                                 фолбэк-пулы)
+                                                         │
+                                                         v
+                                                WhisperSubtitleController
 ```
 
 ---
 
-## Verification Summary (9 simulation runs)
+## 1. Ядро нарративного графа (`Gate2Reality.Narrative`)
 
-| Scenario | Result |
-|----------|--------|
-| Guard cycle timings 45/60/75 s + 30 s repeat | ✅ |
-| YOLO 2–3 frame dropout tolerance | ✅ |
-| NMS cross-class overlap | ✅ |
-| Subtitle prefetch latency (0.00 s) | ✅ |
-| HorrorSafetyGovernor hysteresis | ✅ |
-| Mixed semantic→proximity→gaze graph, 0.1° cone | ✅ |
-| Zone placement: 4 room types incl. edge cases | ✅ |
-| Whisper relay invariant (6 scenarios) | ✅ |
-| Full chapter timeline −39 % energy profile | ✅ |
+| Файл | Назначение |
+|---|---|
+| `ITriggerable.cs` | Контракт эффектов + `NarrativeLabel` (вкл. виртуальные EchoZone/Portal) + struct `DetectionEvent` (zero-GC) |
+| `NarrativeCondition.cs` | Условия узлов: SemanticDetection / Proximity / Gaze; плоский класс с enum вместо полиморфизма; рантайм-цели для процедурных зон |
+| `NarrativeNode.cs` | Сериализуемый узел графа: условие, dwell-time, рёбра, кэш ITriggerable |
+| `NarrativeManager.cs` | FSM по графу; dwell с мягким распадом (терпит мерцание YOLO); **Guard Node**: 45с → маяк → +15с десатурация → +15с партиклы → повтор маяка/30с; `SetNodeRuntimeTarget`, прайминг якоря для guard |
 
-**10 bugs found and fixed** during simulation:
-blocking `ReadbackAndClone`, double tensor disposal, Kotlin context leak,
-MLLM↔UI text disconnect, portal wall theft, rim occlusion order,
-orphaned `EchoZone` namespace, watch-mode freeze at scene boundary,
-`easeOutBack` test artifact, zone drift without `ARAnchor`.
+## 2. Детекция (`Gate2Reality.Detection`)
+
+| Файл | Назначение |
+|---|---|
+| `YoloObjectDetector.cs` | Захват CPU-кадра → squash 640², Sentis GPUCompute, **асинхронный readback**, NMS на преаллоц. массиве; классы cup/chair/book + person; **person-only вахта** (1 Гц, ~0.2 Вт) на Сцену 2; замер латентности в dev-сборках; `SetInferenceInterval` |
+| `DepthPoseProjector.cs` | 2D-бокс → 3D-поза, фолбэк-цепочка: Depth-рейкаст → плоскости → аппроксимационный маркер (не может провалиться); оценка boundsRadius («стул < 1.5 м») |
+
+## 3. Эффекты Сцены 1 «Echoes in the Silence» (`Gate2Reality.Effects`)
+
+| Файл | Назначение |
+|---|---|
+| `TriggerableEffectBase.cs` | База: one-shot, snapToAnchor, Update только при активности |
+| `ChairAwakeningEffect.cs` | Янтарный «дышащий» свет, ramp `_DistortionStrength` через MPB, тень-указатель (скан → доворот на книгу по первой YOLO-детекции) |
+| `BookMemoryEffect.cs` | FSM без корутин: партиклы страниц → белый шум → шёпот → намёк на чашку (звон + призрак трещины) |
+| `CupBreachEffect.cs` | `_CrackProgress` по кривой, взрыв осколков на 80%, голограмма карты (становится игровой в Сцене 2) |
+| `SceneOneDirector.cs` | Связывание: guard-события → маяк/десатурация(Volume)/партиклы; префетч шёпота книги на активации стула; переключение детектора в person-only на чашке |
+
+## 4. Сцена 2 «Картограф» (`Gate2Reality.SceneTwo`)
+
+| Файл | Назначение |
+|---|---|
+| `EchoZonePlacer.cs` | Процедурное размещение 3 зон на классифицированных плоскостях; greedy с релаксацией разноса; eye-clamp 1.0–1.8 м; **портал выбирает первым** (самая большая стена); ARAnchor на зону; фолбэк-кольцо 120°; гасит plane detection после размещения |
+| `EchoZone.cs` | Маркер-компонент якоря: индекс, тип поверхности, нормаль |
+| `HoloMapController.cs` | Голо-карта: контуры плоскостей (LineRenderer), пульс-метки зон, точка игрока; строится один раз |
+| `SceneTwoDirector.cs` | Шёпоты изнанки с префетч-эстафетой (инвариант «слот не-null» доказан симуляцией в 6 сценариях); привязка узла «Пересечение» к якорю портала |
+| `PortalWindowEffect.cs` | Окно/дверь в зазеркалье: апертура easeOutBack (овершут 10%), интерьер вглубь −Z якоря |
+| `EchoSurfaceEffect.cs` | Рябь на полу: пилообразная `_Aperture` на PortalRim — ноль новых шейдеров |
+| `CrossingTransitionEffect.cs` | Финал: вспышка → подмена мира под ней (Volume изнанки, `OnCrossedOver` для Главы II) → reveal |
+
+## 5. Генеративный нарратив (`Gate2Reality.Narrative` / UI)
+
+| Файл | Назначение |
+|---|---|
+| `INarrativeGenerator.cs` | Интерфейс + `NarrativeContext` (битмаска увиденного, яркость, цвет. температура, тип комнаты) |
+| `NarrativeContextCollector.cs` | Light Estimation + сырые детекции → контекст; эвристика комнаты |
+| `OnDeviceNarrativeGenerator.cs` | Мост к Kotlin; гарантии: коллбэк ровно 1 раз, на главном потоке, таймаут 3с → фолбэк своего пула; `RequestWhisper` / `RequestMirrorWhisper`; вытеснение с синхронным фолбэком |
+| `NarrativeLlmBridge.kt` | MediaPipe LLM Inference (Gemma int4), фоновый HandlerThread с пониженным приоритетом, Play Asset Delivery |
+| `WhisperSubtitleController.cs` | Призрачные субтитры: zero-GC печатная машинка через `maxVisibleCharacters` |
+
+## 6. Безопасность и адаптация
+
+| Файл | Назначение |
+|---|---|
+| `HorrorSafetyGovernor.cs` | Человек в кадре → спад до 25% за 0.5с; гистерезис clearDelay 4с, восстановление 3с; каналы: глобальный `_HorrorScale` + дакинг AudioMixer + событие |
+| `DeviceTuningProfile.cs` | Рантайм-тиры Flagship/Mid/Low по GPU+RAM (HONOR 90 = Mid: YOLO 300мс, Depth Fastest, renderScale 0.9); честная проверка Depth API с грациозной деградацией |
+
+## 7. Шейдеры (URP, mobile-first, всё в half)
+
+| Файл | Назначение |
+|---|---|
+| `RealityDistortion.shader` | Дисторсия ножек (`_CameraOpaqueTexture`, без GrabPass) + синяя процедурная трещина; множится на глобальный `_HorrorScale` |
+| `PortalWindow.shader` | Стенсил-маска круглой апертуры (Geometry+10); ZTest LEqual + Offset → рука перекрывает окно |
+| `InvertedWorld.shader` | Мир за стеной: Stencil Equal, **ZTest Always** (env-depth стены иначе отрезал бы мир), туман в глубину + фреснель (Geometry+20) |
+| `PortalRim.shader` | Светящийся обод (Geometry+30, ПОСЛЕ мира) — второй материал того же quad'а |
+
+## 8. Документация
+
+`UNITY_SETUP_CHECKLIST.md` — 15 разделов: пакеты, Player Settings, XR, иерархия,
+URP/окклюзия, слои, Sentis, MLLM, аудио, термопакет, смоук-тесты обеих сцен,
+оптимизационный паспорт, **протокол полевого прогона HONOR 90** с adb-командами
+и таблицей ожидаемых чисел.
 
 ---
 
-## Roadmap
+## Верификация (что доказано симуляциями)
 
-### Stage A — Field Test on HONOR 90 (Immediate)
-1. Development Build per `UNITY_SETUP_CHECKLIST.md` §1–13
-2. 8 GB device → Gemma-270M; log tier, Depth API mode, YOLO timing
-3. Three device-risk mitigations armed:
-   - Frame orientation → `ConversionParams.transformation`
-   - Sentis signatures → `ReadbackRequest` version check
-   - MediaPipe genai → `LlmInferenceOptions` version validation
+Логические порты один-в-один на Python, 9 прогонов: тайминги Guard (45/60/75/повтор-30),
+dwell при мерцании YOLO 2/3 кадров, NMS (межклассовые перекрытия выживают), префетч
+субтитров (опоздание 0.00с), гистерезис вахты, смешанный граф Semantic→Prox→Gaze
+(границы конуса до 0.1°), размещение зон на 4 комнатах вкл. патологии, инвариант
+эстафеты шёпотов (6 сценариев), сквозной таймлайн главы (энергопрофиль −39%).
 
-### Stage B — Asset Production (Parallel)
-- Noise texture (RG flow, B crack detail) for `RealityDistortion.shader`
-- Audio: whisper beds, white noise, chime, breach crunch, beacon, mirror ambience, portal tear, crossing stinger, inverse ambient
-- Prefabs: shadow quad, crack phantom, page/fragment/conductor particles, inverted interior (−Z), holo-map material, subtitle Canvas (TMP), flash fullscreen
+**Найдено и исправлено по дороге (10):** блокирующий ReadbackAndClone; двойной Dispose
+worker-тензора; context-хак в Kotlin; разрыв «MLLM-текст → игрок» (решён субтитрами
+с префетчем); кража лучшей стены у портала; обод под инвертированным миром (очередь);
+бесхозный EchoZone в чужом namespace; заморозка вахты на стыке сцен; артефакт
+теста easeOutBack; уплывание зон без ARAnchor (предотвращено дизайном).
 
-### Stage C — Stabilisation Post-Testing
-- Field bug closure; raise inference intervals if thermal issues
-- Fallback pool expansion (≥ 3 per node)
-- Second test cycle → tag `v1.1-stable`
+---
 
-### Stage D — Chapter II Design
-Entry point: `CrossingTransitionEffect.OnCrossedOver`.
-Rule inversion: guard assists against player; familiar objects behave differently.
+## ДАЛЬНЕЙШИЕ ДЕЙСТВИЯ
 
-### Stage E — Production
-- ScriptableObject graph editor with visual edge renderer
-- Debug HUD (detections, node state, guard timer)
-- Persistent ARCore anchors
-- Play Store: Data Safety form, AR Required, Depth feature matrix
+### Этап A — Полевой прогон HONOR 90 (сейчас, по §15 чек-листа)
+1. Development Build по чек-листу §1–§13 (8-ГБ версия телефона → Gemma-270M!).
+2. Протокол §15 строго по порядку; прислать лог: тир, Depth, `YOLO inference+readback`.
+3. Три известных device-риска, патчи наготове:
+   - ориентация кадра (свет мимо стула) → `ConversionParams.transformation` + display matrix;
+   - сигнатуры Sentis (`ReadbackRequest`) → сверка с установленной версией пакета;
+   - API MediaPipe genai → сверка `LlmInferenceOptions` с версией зависимости.
+
+### Этап B — Производство ассетов (параллельно прогону; код их уже ждёт)
+- Текстура шума (RG: flow, B: трещины) для RealityDistortion;
+- Аудио: шёпот-подложка, белый шум, звон фарфора, хруст/гул breach, маяк,
+  гул изнанки, разрыв мембраны портала, аккорд пересечения, эмбиент той стороны,
+  стингер главы;
+- Префабы: quad тени стула (текстура вытянутой тени), призрак трещины,
+  партиклы (страницы, осколки-пыль, проводник), интерьер инвертированной
+  комнаты (вглубь −Z, материалы InvertedWorld, очереди 2021–2025),
+  голо-карта (материал additive), Canvas субтитров (TMP) и вспышки;
+- AudioMixer с группой Horror (`HorrorVolumeDb`); Volume-профили
+  (десатурация, изнанка); экспорт `yolov8n.onnx` + (опц.) Gemma `.task`.
+
+### Этап C — Стабилизация по результатам прогона
+- Закрыть полевые баги; термопрогон 15 мин → при THROTTLING поднять интервалы;
+- Решение по «золотым» репликам: расширить пулы фолбэков (сейчас по 2 на сюжет);
+- Повторный прогон → тег v1.1-stable.
+
+### Этап D — Глава II «По ту сторону» (дизайн готов к обсуждению)
+- Та же физическая комната как игровое поле с перевёрнутыми правилами:
+  guard помогает ПРОТИВ игрока, знакомые объекты ведут себя иначе;
+  `CrossingTransitionEffect.OnCrossedOver` — готовая точка входа;
+- Технически: переиспользование графа (новые типы условий при необходимости),
+  третий режиссёр, пост-профиль изнанки как базовый.
+
+### Этап E — Технический долг и продакшн
+- Редактор графа на ScriptableObject + визуализация рёбер;
+- Дебаг-HUD (детекции, состояние узла, guard-таймер) для QA;
+- Сейвы прогресса главы (вкл. восстановление якорей через ARCore persistent anchors);
+- Play Store: Data Safety форма (всё on-device — сильная позиция),
+  «AR Required» + Depth feature-флаг, матрица тестовых устройств
+  (флагман / HONOR 90 / low-tier), стрельбовые сессии с живыми игроками.
