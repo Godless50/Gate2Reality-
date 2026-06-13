@@ -17,6 +17,13 @@ namespace Gate2Reality.Persistence
         public int seenObjectsMask = 0; // битовая маска NarrativeLabel (опционально)
         public bool crossedOver = false; // игрок пересёк портал (вход в изнанку)
         public long savedAtUnixSeconds = 0;
+
+        // v2: anchor persistence — относительные позы объектов комнаты.
+        // null при загрузке сейва v1 (JsonUtility не заполнит поле) — это нормально:
+        // отсутствие якорей → L3 фолбэк в OfflineAnchorRelocalizer.
+        public AnchorRecord[] anchors;
+        public RoomFingerprint fingerprint;
+        public int referenceFrameLabel; // (int)NarrativeLabel — опорный якорь
     }
 
     /// <summary>
@@ -27,7 +34,7 @@ namespace Gate2Reality.Persistence
     /// </summary>
     public static class ProgressStore
     {
-        public const int CurrentVersion = 1;
+        public const int CurrentVersion = 2;
         private const string FileName = "progress.json";
 
         private static string FilePath => Path.Combine(Application.persistentDataPath, FileName);
@@ -64,11 +71,12 @@ namespace Gate2Reality.Persistence
                 data = JsonUtility.FromJson<ProgressData>(json);
                 if (data == null) return false;
 
-                // Точка миграции форматов при росте version.
+                // v1 → v2: anchors/fingerprint отсутствуют в JSON → null.
+                // OfflineAnchorRelocalizer обрабатывает null как «нет якорей» → L3.
                 if (data.version != CurrentVersion)
                 {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-                    Debug.Log($"[Gate2Reality] Сейв версии {data.version}, текущая {CurrentVersion} — миграция/сброс при необходимости.");
+                    Debug.Log($"[Gate2Reality] Сейв версии {data.version}, текущая {CurrentVersion} — anchors отсутствуют, будет L3-фолбэк.");
 #endif
                 }
                 return true;

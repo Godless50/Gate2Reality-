@@ -7,6 +7,7 @@ namespace Gate2Reality.ChapterTwo
     using Gate2Reality.Narrative;
     using Gate2Reality.Detection;
     using Gate2Reality.Effects;
+    using Gate2Reality.Persistence;
 
     /// <summary>
     /// Загрузчик Главы II «По ту сторону». Точка входа — статическое событие
@@ -40,9 +41,11 @@ namespace Gate2Reality.ChapterTwo
         [SerializeField] private AudioSource invertedAmbience;
 
         [Header("Перенос якорей Главы I -> узлы Главы II")]
-        [Tooltip("Запомненные трансформы реальной комнаты (объекты/эхо-зоны Главы I)")]
+        [Tooltip("Регистр живых якорей Главы I (заполняется OfflineAnchorRelocalizer / эффектами)")]
+        [SerializeField] private AnchorRegistry ch1AnchorRegistry;
+        [Tooltip("Ручной фолбэк/дебаг: перенесённые Transform (если регистр пуст)")]
         [SerializeField] private Transform[] carriedAnchors;
-        [Tooltip("Индексы узлов графа Главы II, которым соответствуют carriedAnchors (1:1)")]
+        [Tooltip("Индексы узлов для ручного фолбэка (1:1 к carriedAnchors)")]
         [SerializeField] private int[] carriedAnchorNodeIndices;
 
         [Header("Privacy")]
@@ -87,6 +90,19 @@ namespace Gate2Reality.ChapterTwo
 
         private void ApplyCarriedAnchors()
         {
+            // Primary: live registry from OfflineAnchorRelocalizer / Chapter I effects
+            if (ch1AnchorRegistry != null && ch1AnchorRegistry.All.Count > 0)
+            {
+                var all = ch1AnchorRegistry.All;
+                for (int i = 0; i < all.Count; i++)
+                {
+                    if (all[i].t != null)
+                        chapterTwoNarrative.SetNodeRuntimeTarget(all[i].nodeIndex, all[i].t);
+                }
+                return;
+            }
+
+            // Manual fallback (inspector-set, or debug override)
             if (carriedAnchors == null || carriedAnchorNodeIndices == null) return;
             int n = Mathf.Min(carriedAnchors.Length, carriedAnchorNodeIndices.Length);
             for (int i = 0; i < n; i++)

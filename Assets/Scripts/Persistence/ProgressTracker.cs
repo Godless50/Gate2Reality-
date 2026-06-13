@@ -10,10 +10,13 @@ namespace Gate2Reality.Persistence
     /// узла и на пересечении портала, а на старте — при наличии сейва — берёт
     /// автозапуск сцены на себя и возобновляет с сохранённого узла.
     ///
-    /// ПОРЯДОК СТАРТА (важно): в Awake (до любого Start) читаем сейв и зовём
-    /// NarrativeManager.SuppressAutoStart(), чтобы менеджер не стартовал сам с
-    /// нуля. В своём Start уже зовём StartSceneAt(savedNode). Awake всегда
-    /// предшествует Start — гонки нет.
+    /// ПОРЯДОК СТАРТА: в Awake читаем сейв и зовём SuppressAutoStart(); в Start —
+    /// если есть relocalizer, запускаем Relocalize и стартуем сцену по коллбэку;
+    /// иначе сразу StartSceneAt. Awake всегда предшествует Start — гонки нет.
+    ///
+    /// ЗАПИСЬ ЯКОРЕЙ: на каждом OnNodeActivated вызываем AnchorSerializer.Capture,
+    /// если AnchorRegistry заполнен. Сейв включает относительные позы объектов
+    /// комнаты — релокализатор использует их при следующем запуске.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class ProgressTracker : MonoBehaviour
@@ -29,6 +32,14 @@ namespace Gate2Reality.Persistence
         [Tooltip("Чистить сейв при завершении сцены (глава пройдена с нуля в след. раз)")]
         [SerializeField] private bool clearOnSceneCompleted = false;
 
+        [Header("Якоря (v2)")]
+        [Tooltip("Регистр живых якорей — заполняется эффектами/плейсерами во время игры")]
+        [SerializeField] private AnchorRegistry anchorRegistry;
+        [Tooltip("Метка опорного якоря для системы отсчёта комнаты")]
+        [SerializeField] private NarrativeLabel referenceAnchorLabel = NarrativeLabel.Chair;
+        [Tooltip("Релокализатор L1→L2→L3. Если не задан — resume идёт без восстановления якорей.")]
+        [SerializeField] private OfflineAnchorRelocalizer relocalizer;
+
         private ProgressData _data;
         private bool _shouldResume;
         private int _resumeNodeIndex;
@@ -37,12 +48,12 @@ namespace Gate2Reality.Persistence
         {
             _data = new ProgressData { chapter = chapterId };
 
-            if (resumeOnStart && ProgressStore.TryLoad(out ProgressData saved) && saved.chapter == chapterId)
+            if (resumeOnStart && ProgressStore.TryLoad(out ProgressData saved) &&
+                saved.chapter == chapterId)
             {
                 _data = saved;
                 _shouldResume = true;
                 _resumeNodeIndex = Mathf.Max(0, saved.nodeIndex);
-                // Забираем автозапуск у менеджера ДО его Start().
                 if (narrativeManager != null) narrativeManager.SuppressAutoStart();
             }
         }
@@ -69,10 +80,28 @@ namespace Gate2Reality.Persistence
 
         private void Start()
         {
-            if (_shouldResume && narrativeManager != null)
+            if (!_shouldResume || narrativeManager == null) return;
+
+            if (relocalizer != null)
+            {
+                // Relocalize first; start scene in callback with restored targets
+                relocalizer.Relocalize(_data, result =>
+                {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                    Debug.Log($"[Gate2Reality] Resume via L{result.Level}: глава {chapterId}, узел {_resumeNodeIndex}.");
+#endif
+                    if (result.NodeAnchors != null)
+                    {
+                        foreach (var kvp in result.NodeAnchors)
+                            narrativeManager.SetNodeRuntimeTarget(kvp.Key, kvp.Value);
+                    }
+                    narrativeManager.StartSceneAt(_resumeNodeIndex);
+                });
+            }
+            else
             {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-                Debug.Log($"[Gate2Reality] Resume: глава {chapterId}, узел {_resumeNodeIndex}.");
+                Debug.Log($"[Gate2Reality] Resume (без релокализации): глава {chapterId}, узел {_resumeNodeIndex}.");
 #endif
                 narrativeManager.StartSceneAt(_resumeNodeIndex);
             }
@@ -83,17 +112,26 @@ namespace Gate2Reality.Persistence
         // =====================================================================
         private void HandleNodeActivated(int nodeIndex, Pose pose)
         {
-            // Сохраняем СЛЕДУЮЩУЮ цель: при возобновлении игрок продолжает с
-            // узла, который ещё не пройден. Если узел был терминальным — граф
-            // сам уйдёт в OnSceneCompleted, тут просто фиксируем достигнутое.
             _data.chapter = chapterId;
-            _data.nodeIndex = narrativeManager != null ? narrativeManager.CurrentNodeIndex : nodeIndex;
+            _data.nodeIndex = narrativeManager != null
+                ? narrativeManager.CurrentNodeIndex
+                : nodeIndex;
+
+            // Capture anchor positions if registry has entries
+            if (anchorRegistry != null && anchorRegistry.All.Count > 0)
+                AnchorSerializer.Capture(anchorRegistry, referenceAnchorLabel, _data);
+
             ProgressStore.Save(_data);
         }
 
         private void HandleCrossedOver()
         {
             _data.crossedOver = true;
+
+            // Final anchor capture at portal crossing
+            if (anchorRegistry != null && anchorRegistry.All.Count > 0)
+                AnchorSerializer.Capture(anchorRegistry, referenceAnchorLabel, _data);
+
             ProgressStore.Save(_data);
         }
 
@@ -105,23 +143,23 @@ namespace Gate2Reality.Persistence
             }
             else
             {
-                // Фиксируем «глава пройдена»: узел за пределами графа = маркер финала.
-                _data.nodeIndex = narrativeManager != null ? narrativeManager.NodeCount : _data.nodeIndex;
+                _data.nodeIndex = narrativeManager != null
+                    ? narrativeManager.NodeCount
+                    : _data.nodeIndex;
                 ProgressStore.Save(_data);
             }
         }
 
         // =====================================================================
-        // ПУБЛИЧНОЕ API (меню/настройки)
+        // ПУБЛИЧНОЕ API
         // =====================================================================
-        /// <summary>Полный сброс прогресса (кнопка «Новая игра»).</summary>
         public void ClearProgress()
         {
             ProgressStore.Clear();
             _data = new ProgressData { chapter = chapterId };
+            anchorRegistry?.Clear();
         }
 
-        /// <summary>Текущий снимок (для меню «Продолжить»: показать главу/прогресс).</summary>
         public bool TryPeekSave(out ProgressData data) => ProgressStore.TryLoad(out data);
     }
 }
