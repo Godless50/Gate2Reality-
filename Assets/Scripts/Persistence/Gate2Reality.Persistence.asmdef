@@ -1,0 +1,17 @@
+{
+  "name": "Gate2Reality.Persistence",
+  "rootNamespace": "Gate2Reality.Persistence",
+  "references": [
+    "Gate2Reality.Narrative",
+    "Gate2Reality.Effects"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

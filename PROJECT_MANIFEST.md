@@ -155,9 +155,15 @@ worker-тензора; context-хак в Kotlin; разрыв «MLLM-текст 
   третий режиссёр, пост-профиль изнанки как базовый.
 
 ### Этап E — Технический долг и продакшн
-- Редактор графа на ScriptableObject + визуализация рёбер;
-- Дебаг-HUD (детекции, состояние узла, guard-таймер) для QA;
-- Сейвы прогресса главы (вкл. восстановление якорей через ARCore persistent anchors);
+- ✅ Редактор графа на ScriptableObject + визуализация рёбер
+  (`NarrativeGraphAsset` + `Assets/Editor/NarrativeGraphEditorWindow`);
+- ✅ Дебаг-HUD (детекции, состояние узла, guard-таймер) для QA
+  (`DetectionDebugHud`, только Editor/Development Build);
+- ✅ Сейвы прогресса главы (`ProgressStore` + `ProgressTracker`,
+  resume с сохранённого узла); восстановление якорей через ARCore
+  persistent anchors — следующий шаг поверх этого;
 - Play Store: Data Safety форма (всё on-device — сильная позиция),
   «AR Required» + Depth feature-флаг, матрица тестовых устройств
   (флагман / HONOR 90 / low-tier), стрельбовые сессии с живыми игроками.
+
+Подробности тулинга — `docs/TECH_DEBT_TOOLING.md`.

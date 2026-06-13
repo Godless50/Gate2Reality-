@@ -24,14 +24,38 @@ namespace Gate2Reality.Narrative
         // =====================================================================
         // ГРАФ
         // =====================================================================
+        [Header("Источник графа")]
+        [Tooltip("Опциональный ScriptableObject-граф. Назначен — структура берётся из него " +
+                 "(инлайн-массив ниже игнорируется, эффекты доливаются из биндингов). " +
+                 "Пусто — работаем на инлайн-массиве как раньше.")]
+        [SerializeField] private NarrativeGraphAsset graphAsset;
+
+        [Tooltip("Привязка сценических ITriggerable к узлам ассета по индексу. " +
+                 "Нужна только при использовании graphAsset (ассет не хранит ссылки на сцену).")]
+        [SerializeField] private GraphTriggerableBinding[] graphTriggerableBindings;
+
         [Header("Trigger-Action Graph (Сцена 1: Chair -> Book -> Cup)")]
         [SerializeField] private NarrativeNode[] nodes;
 
         [Tooltip("Индекс стартового узла (The Chair)")]
         [SerializeField] private int entryNodeIndex = 0;
 
+        [Tooltip("Стартовать сцену автоматически в Start(). Сними галку, если стартом " +
+                 "управляет ProgressTracker (resume) или внешний код.")]
+        [SerializeField] private bool autoStartOnStart = true;
+
         [Tooltip("Transform AR-камеры (XR Origin) — нужен пространственным условиям Сцены 2")]
         [SerializeField] private Transform playerCamera;
+
+        /// <summary>Привязка эффектов сцены к узлу графа-ассета по индексу.</summary>
+        [System.Serializable]
+        private struct GraphTriggerableBinding
+        {
+            [Tooltip("Индекс узла в graphAsset")]
+            public int nodeIndex;
+            [Tooltip("Компоненты-ITriggerable из сцены для этого узла")]
+            public MonoBehaviour[] behaviours;
+        }
 
         // =====================================================================
         // GUARD NODE
@@ -86,12 +110,33 @@ namespace Gate2Reality.Narrative
         private float _nextEscalationAt;          // абсолютное значение _idleTimer для след. ступени
         private bool _sceneRunning;
         private bool _targetSeenThisFrame;        // выставляет ReportDetection, читает Update
+        private bool _autoStartSuppressed;        // ProgressTracker берёт старт на себя (resume)
+
+        // =====================================================================
+        // ПУБЛИЧНОЕ СОСТОЯНИЕ (тривиальные геттеры — нужны сейвам в любой сборке)
+        // =====================================================================
+        /// <summary>Индекс текущего активного узла (-1 до старта / после финала).</summary>
+        public int CurrentNodeIndex => _currentNodeIndex;
+
+        /// <summary>Идёт ли сейчас сцена.</summary>
+        public bool IsSceneRunning => _sceneRunning;
+
+        /// <summary>Количество узлов в активном графе.</summary>
+        public int NodeCount => nodes != null ? nodes.Length : 0;
 
         // =====================================================================
         // LIFECYCLE
         // =====================================================================
         private void Awake()
         {
+            // Источник графа: ассет (приоритет) или инлайн-массив.
+            if (graphAsset != null)
+            {
+                nodes = graphAsset.CreateRuntimeNodes();
+                entryNodeIndex = graphAsset.EntryNodeIndex;
+                ApplyTriggerableBindings();
+            }
+
             // Единственное место, где разрешены аллокации: прогрев кэшей.
             for (int i = 0; i < nodes.Length; i++)
             {
@@ -99,17 +144,42 @@ namespace Gate2Reality.Narrative
             }
         }
 
-        private void Start()
+        /// <summary>Доливает сценические ITriggerable в клонированные узлы ассета по индексу.</summary>
+        private void ApplyTriggerableBindings()
         {
-            StartScene();
+            if (graphTriggerableBindings == null) return;
+            for (int i = 0; i < graphTriggerableBindings.Length; i++)
+            {
+                int idx = graphTriggerableBindings[i].nodeIndex;
+                if (idx < 0 || idx >= nodes.Length)
+                {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                    Debug.LogError($"[Gate2Reality] Биндинг эффектов ссылается на несуществующий узел {idx}");
+#endif
+                    continue;
+                }
+                nodes[idx].triggerableBehaviours = graphTriggerableBindings[i].behaviours;
+            }
         }
 
-        public void StartScene()
+        private void Start()
+        {
+            if (autoStartOnStart && !_autoStartSuppressed) StartScene();
+        }
+
+        /// <summary>Стартовать сцену со стартового узла графа.</summary>
+        public void StartScene() => StartSceneAt(entryNodeIndex);
+
+        /// <summary>Стартовать/возобновить сцену с произвольного узла (resume из сейва).</summary>
+        public void StartSceneAt(int nodeIndex)
         {
             _sceneRunning = true;
             ResetIdleState();
-            EnterNode(entryNodeIndex);
+            EnterNode(nodeIndex);
         }
+
+        /// <summary>ProgressTracker вызывает в своём Awake, чтобы взять старт на себя (resume).</summary>
+        public void SuppressAutoStart() => _autoStartSuppressed = true;
 
         // =====================================================================
         // ВХОДНАЯ ТОЧКА ДЛЯ ДЕТЕКТОРА (Step 2: YOLO via Unity Sentis)
@@ -332,5 +402,47 @@ namespace Gate2Reality.Narrative
             _guardStage = GuardStage.Dormant;
             _nextEscalationAt = 0f;
         }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        // =====================================================================
+        // DEV-СНИМОК ДЛЯ ОТЛАДОЧНОГО HUD (DetectionDebugHud).
+        // Компилируется только в Editor/Development Build — в релизе кода нет,
+        // горячий путь не затронут.
+        // =====================================================================
+        public readonly struct DebugSnapshot
+        {
+            public readonly int NodeIndex;
+            public readonly string NodeName;
+            public readonly float Dwell;
+            public readonly float DwellTarget;
+            public readonly float IdleTimer;
+            public readonly float IdleThreshold;
+            public readonly int GuardStage;        // 0..3
+            public readonly bool SceneRunning;
+
+            public DebugSnapshot(int nodeIndex, string nodeName, float dwell, float dwellTarget,
+                                 float idleTimer, float idleThreshold, int guardStage, bool sceneRunning)
+            {
+                NodeIndex = nodeIndex;
+                NodeName = nodeName;
+                Dwell = dwell;
+                DwellTarget = dwellTarget;
+                IdleTimer = idleTimer;
+                IdleThreshold = idleThreshold;
+                GuardStage = guardStage;
+                SceneRunning = sceneRunning;
+            }
+        }
+
+        public DebugSnapshot GetDebugSnapshot() => new DebugSnapshot(
+            _currentNodeIndex,
+            _currentNode != null ? _currentNode.nodeName : "<none>",
+            _currentNode != null ? _currentNode.DwellAccumulator : 0f,
+            _currentNode != null ? _currentNode.dwellTimeSeconds : 0f,
+            _idleTimer,
+            idleThresholdSeconds,
+            (int)_guardStage,
+            _sceneRunning);
+#endif
     }
 }

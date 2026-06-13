@@ -1,0 +1,18 @@
+{
+  "name": "Gate2Reality.Editor",
+  "rootNamespace": "Gate2Reality.EditorTools",
+  "references": [
+    "Gate2Reality.Narrative"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
