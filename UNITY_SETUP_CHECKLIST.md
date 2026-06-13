@@ -51,6 +51,9 @@ Definitive setup для Pixel 9 / Galaxy S26. Порядок имеет знач
 
 - [ ] Связать ссылки в инспекторах (NarrativeManager.nodes: 0=Chair→[1], 1=Book→[2], 2=Cup→[])
 - [ ] `dwellTimeSeconds`: Chair 0.75 / Book 0.75 / Cup 1.0 (чашка мелкая — детекция дрожит сильнее)
+- [ ] **NarrativeContextCollector**: `cameraManager` = ARCameraManager, `narrativeManager`
+      = NarrativeManager (сырые детекции идут через `NarrativeManager.OnDetectionRelayed`,
+      а не напрямую из детектора — так разорвана цикл-ссылка Narrative↔Detection)
 
 ## 5. ARCameraManager / AROcclusionManager
 
