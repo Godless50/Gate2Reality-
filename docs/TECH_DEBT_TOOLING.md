@@ -37,6 +37,14 @@
 затем `ApplyTriggerableBindings()` доливает эффекты по индексу. Если ассет не
 назначен — работает инлайн-массив, как раньше. **Полная обратная совместимость.**
 
+### Готовые графы (генератор)
+`Tools → Gate2Reality → Generate Chapter I / II Graph`
+(`Assets/Editor/ChapterGraphGenerator.cs`) создаёт канонические ассеты в
+`Assets/Narrative/`: Глава I — узлы 0–6 ровно по чек-листу §4 (dwell) + §13
+(WallEcho/SurfaceEcho/PortalWall/Crossing); Глава II — перевёрнутая арка на
+`AvertedGaze`. Дальше — правка в визуальном редакторе. Закрывает разрыв
+«система графа есть, контента нет».
+
 ---
 
 ## 2. Дебаг-HUD детекций
