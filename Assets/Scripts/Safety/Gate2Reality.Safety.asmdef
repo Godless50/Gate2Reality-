@@ -3,7 +3,8 @@
   "rootNamespace": "Gate2Reality.Safety",
   "references": [
     "Gate2Reality.Detection",
-    "Gate2Reality.Narrative"
+    "Gate2Reality.Narrative",
+    "Gate2Reality.Persistence"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

@@ -45,6 +45,18 @@ namespace Gate2Reality.Persistence
         [Tooltip("Допуск fingerprint-матчинга, метры. Рекомендация: 0.20–0.40 по Stage A.")]
         [SerializeField] private float l2FingerprintTolerance = 0.35f;
 
+        // ─── DeviceTuningProfile API ───────────────────────────────────────
+
+        /// <summary>
+        /// Override the L2 detection window length. Called by DeviceTuningProfile
+        /// based on device tier: Flagship=2s, Mid=3s, Low=4s.
+        /// </summary>
+        public void SetL2Window(float seconds) => l2WindowSeconds = Mathf.Max(0.5f, seconds);
+
+        /// <summary>Override fingerprint tolerance (metres). Call after SetL2Window if needed.</summary>
+        public void SetFingerprintTolerance(float metres) =>
+            l2FingerprintTolerance = Mathf.Max(0.05f, metres);
+
         // ─── IAnchorRelocalizer ────────────────────────────────────────────
 
         public void Relocalize(ProgressData save, Action<RelocalizationResult> onComplete)

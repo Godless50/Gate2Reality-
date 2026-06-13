@@ -8,6 +8,7 @@ using UnityEngine.XR.ARSubsystems;
 namespace Gate2Reality
 {
     using Gate2Reality.Detection;
+    using Gate2Reality.Persistence;
 
     /// <summary>
     /// Рантайм-профилировщик устройства. Один раз на старте определяет тир
@@ -39,11 +40,17 @@ namespace Gate2Reality
         [Header("Связи")]
         [SerializeField] private AROcclusionManager occlusionManager;
         [SerializeField] private YoloObjectDetector detector;
+        [SerializeField] private OfflineAnchorRelocalizer relocalizer;
 
         [Header("Частоты YOLO по тирам, мс")]
         [SerializeField] private int flagshipIntervalMs = 200;
         [SerializeField] private int midIntervalMs = 300;
         [SerializeField] private int lowIntervalMs = 400;
+
+        [Header("Окно L2 по тирам, с")]
+        [SerializeField] private float flagshipL2Window = 2f;
+        [SerializeField] private float midL2Window = 3f;
+        [SerializeField] private float lowL2Window = 4f;
 
         [Header("Render Scale по тирам")]
         [SerializeField] private float midRenderScale = 0.9f;
@@ -133,6 +140,17 @@ namespace Gate2Reality
                 GraphicsSettings.currentRenderPipeline is UniversalRenderPipelineAsset urp)
             {
                 urp.renderScale = tier == Tier.Mid ? midRenderScale : lowRenderScale;
+            }
+
+            // 4) L2 relocalization window — slower YOLO → wider detection window needed
+            if (relocalizer != null)
+            {
+                relocalizer.SetL2Window(tier switch
+                {
+                    Tier.Flagship => flagshipL2Window,
+                    Tier.Mid => midL2Window,
+                    _ => lowL2Window
+                });
             }
         }
 
