@@ -4,6 +4,7 @@
   "references": [
     "Gate2Reality.Narrative",
     "Unity.XR.ARFoundation",
+    "Unity.XR.ARSubsystems",
     "Unity.Sentis"
   ],
   "includePlatforms": [],

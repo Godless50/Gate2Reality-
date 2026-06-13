@@ -4,7 +4,10 @@
   "references": [
     "Gate2Reality.Detection",
     "Gate2Reality.Narrative",
-    "Gate2Reality.Persistence"
+    "Gate2Reality.Persistence",
+    "Unity.XR.ARFoundation",
+    "Unity.XR.ARSubsystems",
+    "Unity.RenderPipelines.Universal.Runtime"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

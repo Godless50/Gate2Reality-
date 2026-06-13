@@ -4,7 +4,8 @@
   "references": [
     "Gate2Reality.Narrative",
     "Gate2Reality.Persistence",
-    "Unity.TextMeshPro"
+    "Unity.TextMeshPro",
+    "UnityEngine.UI"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
