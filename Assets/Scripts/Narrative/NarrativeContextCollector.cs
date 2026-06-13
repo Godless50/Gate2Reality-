@@ -3,12 +3,14 @@ using UnityEngine.XR.ARFoundation;
 
 namespace Gate2Reality.Narrative
 {
-    using Gate2Reality.Detection;
-
     /// <summary>
     /// Сборщик контекста для MLLM: подписывается на ARCore Light Estimation
     /// и сырой поток YOLO-детекций, копит состояние и по запросу пакует его
     /// в NarrativeContext (struct, на стеке, без аллокаций).
+    ///
+    /// Сырые детекции берём через NarrativeManager.OnDetectionRelayed, а не
+    /// напрямую из YoloObjectDetector — иначе Narrative ссылалась бы на сборку
+    /// Detection, которая уже ссылается на Narrative (циклическая зависимость).
     ///
     /// ТРЕБОВАНИЕ: на ARCameraManager включить Light Estimation =
     /// Ambient Intensity + Ambient Color (войдёт в чек-лист Step 5).
@@ -17,7 +19,7 @@ namespace Gate2Reality.Narrative
     public sealed class NarrativeContextCollector : MonoBehaviour
     {
         [SerializeField] private ARCameraManager cameraManager;
-        [SerializeField] private YoloObjectDetector detector;
+        [SerializeField] private NarrativeManager narrativeManager;
 
         private float _brightness = 0.5f;       // экспоненциальное сглаживание
         private float _kelvin;                  // 0 = неизвестно
@@ -26,13 +28,13 @@ namespace Gate2Reality.Narrative
         private void OnEnable()
         {
             cameraManager.frameReceived += OnFrame;
-            detector.OnRawDetection += OnDetection;
+            narrativeManager.OnDetectionRelayed += OnDetection;
         }
 
         private void OnDisable()
         {
             cameraManager.frameReceived -= OnFrame;
-            detector.OnRawDetection -= OnDetection;
+            narrativeManager.OnDetectionRelayed -= OnDetection;
         }
 
         private void OnFrame(ARCameraFrameEventArgs args)

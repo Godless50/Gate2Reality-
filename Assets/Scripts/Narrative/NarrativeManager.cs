@@ -98,6 +98,14 @@ namespace Gate2Reality.Narrative
         /// <summary>Guard: партиклы-проводник от камеры к цели.</summary>
         public event Action<Pose> OnGuideParticlesRequested;
 
+        /// <summary>
+        /// Ретрансляция СЫРОГО потока детекций (до фильтрации сцены/узла).
+        /// Срабатывает на каждый результат детектора, даже когда сцена не идёт —
+        /// NarrativeContextCollector копит по нему _seenMask, не завися от
+        /// сборки Detection (иначе Narrative↔Detection даёт циклическую ссылку).
+        /// </summary>
+        public event Action<DetectionEvent> OnDetectionRelayed;
+
         // =====================================================================
         // ВНУТРЕННЕЕ СОСТОЯНИЕ (FSM)
         // =====================================================================
@@ -193,6 +201,10 @@ namespace Gate2Reality.Narrative
         // =====================================================================
         public void ReportDetection(in DetectionEvent detection)
         {
+            // Ретранслируем сырой поток ДО любых guard'ов: подписчики контекста
+            // (NarrativeContextCollector) должны видеть детекции всегда.
+            OnDetectionRelayed?.Invoke(detection);
+
             if (!_sceneRunning || _currentNode == null) return;
 
             // Вся фильтрация (метка, confidence, габариты) — в условии узла.
