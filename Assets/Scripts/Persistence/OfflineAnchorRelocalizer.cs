@@ -25,6 +25,13 @@ namespace Gate2Reality.Persistence
     [DisallowMultipleComponent]
     public sealed class OfflineAnchorRelocalizer : MonoBehaviour, IAnchorRelocalizer
     {
+        /// <summary>
+        /// Stage A диагностика: достигнутый уровень релокализации и число
+        /// восстановленных якорей. Подписчик — отладочный HUD (dev-only).
+        /// Срабатывает ровно один раз на каждый Relocalize.
+        /// </summary>
+        public static event System.Action<int, int> OnRelocalizationReported;
+
         [Header("Зависимости")]
         [SerializeField] private AnchorRegistry anchorRegistry;
         [SerializeField] private YoloObjectDetector detector;
@@ -267,9 +274,12 @@ namespace Gate2Reality.Persistence
             return new RoomFingerprint { pairwiseDistances = dist, anchorCount = n };
         }
 
-        [System.Diagnostics.Conditional("UNITY_EDITOR")]
-        [System.Diagnostics.Conditional("DEVELOPMENT_BUILD")]
-        private static void LogLevel(int level, int count) =>
+        private static void LogLevel(int level, int count)
+        {
+            OnRelocalizationReported?.Invoke(level, count);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[Gate2Reality] Relocalization L{level}: {count} anchor(s) restored.");
+#endif
+        }
     }
 }

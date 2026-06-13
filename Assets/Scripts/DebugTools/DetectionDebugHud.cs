@@ -5,6 +5,7 @@ namespace Gate2Reality.DebugTools
     using Gate2Reality.Narrative;
     using Gate2Reality.Detection;
     using Gate2Reality.Effects;
+    using Gate2Reality.Persistence;
 
     /// <summary>
     /// Экранный отладочный HUD для QA и полевых прогонов (Stage A, Pixel 9 /
@@ -49,6 +50,11 @@ namespace Gate2Reality.DebugTools
         private bool _humanPresent;
         private float _intensity = 1f;
 
+        // Релокализация якорей (Stage A): уровень L1/L2/L3 + число восстановленных.
+        private int _relocLevel;        // 0 = ещё не было resume
+        private int _relocAnchorCount;
+        private float _relocAtTime;
+
         // Сглаженный FPS
         private float _smoothedDt = 0.016f;
 
@@ -77,6 +83,7 @@ namespace Gate2Reality.DebugTools
                 safetyGovernor.OnIntensityChanged += HandleIntensity;
                 _intensity = safetyGovernor.CurrentIntensity;
             }
+            OfflineAnchorRelocalizer.OnRelocalizationReported += HandleRelocalization;
         }
 
         private void OnDisable()
@@ -90,6 +97,7 @@ namespace Gate2Reality.DebugTools
             {
                 safetyGovernor.OnIntensityChanged -= HandleIntensity;
             }
+            OfflineAnchorRelocalizer.OnRelocalizationReported -= HandleRelocalization;
         }
 
         private void Update()
@@ -114,6 +122,13 @@ namespace Gate2Reality.DebugTools
         private void HandleHumanPresence(bool present) => _humanPresent = present;
         private void HandleIntensity(float v) => _intensity = v;
 
+        private void HandleRelocalization(int level, int count)
+        {
+            _relocLevel = level;
+            _relocAnchorCount = count;
+            _relocAtTime = Time.unscaledTime;
+        }
+
         private void OnGUI()
         {
             if (!visible) return;
@@ -121,7 +136,7 @@ namespace Gate2Reality.DebugTools
             EnsureStyles();
 
             const float w = 320f;
-            float h = 168f + _recentCount * 18f;
+            float h = 168f + _recentCount * 18f + (_relocLevel > 0 ? 18f : 0f);
             GUILayout.BeginArea(new Rect(10, 10, w, h), _boxStyle);
 
             // --- Производительность ---
@@ -159,6 +174,17 @@ namespace Gate2Reality.DebugTools
                  _humanPresent ? Color.red : Color.gray);
             Line($"Horror intensity: {_intensity:F2} {Bar(_intensity, 10)}",
                  _intensity >= 0.95f ? Color.green : new Color(1f, 0.5f, 0.5f));
+
+            // --- Релокализация якорей (Stage A) ---
+            if (_relocLevel > 0)
+            {
+                // L1 тёплый (зелёный), L2 точный re-detect (циан), L3 фолбэк (жёлтый).
+                Color rc = _relocLevel == 1 ? Color.green
+                         : _relocLevel == 2 ? Color.cyan
+                         : Color.yellow;
+                float relocAge = Time.unscaledTime - _relocAtTime;
+                Line($"Reloc: L{_relocLevel}  {_relocAnchorCount} anchor(s)  {relocAge:F0}s ago", rc);
+            }
 
             // --- Лента детекций ---
             Line("Recent detections:", Color.white);
