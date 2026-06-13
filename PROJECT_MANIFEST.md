@@ -183,8 +183,11 @@ play-mode тестами `Guard_DefaultOff_FiresDespiteProgress` /
 - ✅ Дебаг-HUD (детекции, состояние узла, guard-таймер) для QA
   (`DetectionDebugHud`, только Editor/Development Build);
 - ✅ Сейвы прогресса главы (`ProgressStore` + `ProgressTracker`,
-  resume с сохранённого узла); восстановление якорей через ARCore
-  persistent anchors — следующий шаг поверх этого;
+  resume с сохранённого узла);
+- 📐 Восстановление якорей между сессиями — **дизайн готов**
+  (`docs/PERSISTENT_ANCHORS_DESIGN.md`): офлайн-релокализация перерасчётом
+  L1(тёплый возврат)→L2(повторная детекция)→L3(относительные позы),
+  без cloud anchors; реализация L1+L3 сразу, L2 — после Stage A;
 - Play Store: Data Safety форма (всё on-device — сильная позиция),
   «AR Required» + Depth feature-флаг, матрица тестовых устройств
   (флагман / HONOR 90 / low-tier), стрельбовые сессии с живыми игроками.
