@@ -121,27 +121,34 @@ namespace Gate2Reality.Persistence
 
             if (best.Count == 0 || save.anchors == null) yield break;
 
-            // Match saved records to detected poses by label
-            var matched = new Dictionary<int, Pose>(save.anchors.Length); // nodeIndex → world pose
+            // Match ONLY semantic (YOLO-detectable) records. Echo zones / Portal
+            // are procedural and don't appear in YOLO output — excluding them here
+            // keeps fingerprint counts consistent with what AnchorSerializer stored.
+            var matched = new Dictionary<int, Pose>(save.anchors.Length);
+            int semanticExpected = 0;
             for (int i = 0; i < save.anchors.Length; i++)
             {
-                var rec = save.anchors[i];
-                var lbl = (NarrativeLabel)rec.label;
+                var lbl = (NarrativeLabel)save.anchors[i].label;
+                if (!AnchorSerializer.IsSemanticLabel(lbl)) continue;
+                semanticExpected++;
                 if (best.TryGetValue(lbl, out var hit))
-                    matched[rec.nodeIndex] = hit.pose;
+                    matched[save.anchors[i].nodeIndex] = hit.pose;
             }
             if (matched.Count == 0) yield break;
 
-            // Fingerprint check: verify spatial layout is consistent
+            // Fingerprint check: all expected semantic anchors found + geometry consistent.
             if (save.fingerprint != null && save.fingerprint.anchorCount > 1 &&
-                matched.Count == save.anchors.Length)
+                matched.Count == semanticExpected)
             {
-                var livePos = new Vector3[save.anchors.Length];
+                var livePos = new Vector3[semanticExpected];
+                int pi = 0;
                 for (int i = 0; i < save.anchors.Length; i++)
                 {
+                    var lbl = (NarrativeLabel)save.anchors[i].label;
+                    if (!AnchorSerializer.IsSemanticLabel(lbl)) continue;
                     if (!matched.TryGetValue(save.anchors[i].nodeIndex, out Pose p))
                     { livePos = null; break; }
-                    livePos[i] = p.position;
+                    livePos[pi++] = p.position;
                 }
 
                 if (livePos != null)
@@ -256,7 +263,7 @@ namespace Gate2Reality.Persistence
             foreach (var r in records)
             {
                 var lbl = (NarrativeLabel)r.label;
-                if (lbl == NarrativeLabel.None || lbl == NarrativeLabel.EchoZone) continue;
+                if (!AnchorSerializer.IsSemanticLabel(lbl)) continue; // EchoZone/Portal/None skip
                 if (!found.ContainsKey(lbl)) return false;
             }
             return true;

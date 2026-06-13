@@ -216,6 +216,44 @@ namespace Gate2Reality.Tests
             Assert.AreEqual((int)NarrativeLabel.Chair, loaded.referenceFrameLabel);
         }
 
+        // ─── IsSemanticLabel ──────────────────────────────────────────────
+
+        [Test]
+        public void IsSemanticLabel_RecognisesCorrectly()
+        {
+            Assert.IsTrue(AnchorSerializer.IsSemanticLabel(NarrativeLabel.Chair));
+            Assert.IsTrue(AnchorSerializer.IsSemanticLabel(NarrativeLabel.Book));
+            Assert.IsTrue(AnchorSerializer.IsSemanticLabel(NarrativeLabel.Cup));
+            Assert.IsFalse(AnchorSerializer.IsSemanticLabel(NarrativeLabel.EchoZone));
+            Assert.IsFalse(AnchorSerializer.IsSemanticLabel(NarrativeLabel.Portal));
+            Assert.IsFalse(AnchorSerializer.IsSemanticLabel(NarrativeLabel.None));
+        }
+
+        // ─── EchoZone excluded from fingerprint ───────────────────────────
+
+        [Test]
+        public void Capture_EchoZone_ExcludedFromFingerprint_ButInAnchors()
+        {
+            var gos = new[] { CreateAt(0f, 0f), CreateAt(2f, 0f), CreateAt(1f, 2f) };
+            var reg = new TestRegistry();
+            reg.Register(0, NarrativeLabel.Chair, gos[0].transform);
+            reg.Register(1, NarrativeLabel.Book, gos[1].transform);
+            reg.Register(3, NarrativeLabel.EchoZone, gos[2].transform);
+
+            var data = new ProgressData();
+            AnchorSerializer.Capture(reg, NarrativeLabel.Chair, data);
+
+            // EchoZone excluded from fingerprint: only Chair+Book form it (1 pair)
+            Assert.AreEqual(2, data.fingerprint.anchorCount,
+                "fingerprint counts only semantic anchors");
+            Assert.AreEqual(1, data.fingerprint.pairwiseDistances.Length);
+
+            // All 3 present in anchors[] for L3 relative fallback
+            Assert.AreEqual(3, data.anchors.Length, "all anchors saved for L3");
+
+            foreach (var go in gos) Object.DestroyImmediate(go);
+        }
+
         // ─── Three-anchor fingerprint ─────────────────────────────────────
 
         [Test]

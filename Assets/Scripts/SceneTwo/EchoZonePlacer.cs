@@ -7,6 +7,7 @@ using UnityEngine.XR.ARSubsystems;
 namespace Gate2Reality.SceneTwo
 {
     using Gate2Reality.Narrative;
+    using Gate2Reality.Persistence;
 
     /// <summary>
     /// Процедурное размещение эхо-зон Сцены 2 «Картограф» на реальных
@@ -50,6 +51,8 @@ namespace Gate2Reality.SceneTwo
         [SerializeField] private ARAnchorManager anchorManager;
         [SerializeField] private NarrativeManager narrativeManager;
         [SerializeField] private Transform playerCamera;
+        [Tooltip("Если задан — зарегистрировать размещённые зоны для сохранения/L3-фолбэка")]
+        [SerializeField] private AnchorRegistry anchorRegistry;
 
         [Header("Конфигурация")]
         [Tooltip("Узел, активация которого запускает размещение (Чашка = 2)")]
@@ -143,6 +146,7 @@ namespace Gate2Reality.SceneTwo
 
                 narrativeManager.SetNodeRuntimeTarget(slots[i].nodeIndex, anchor);
                 _placed.Add(new PlacedZone(slots[i].kind, anchor));
+                anchorRegistry?.Register(slots[i].nodeIndex, NarrativeLabel.EchoZone, anchor);
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
                 Debug.Log($"[Gate2Reality] Зона {slots[i].kind} -> {picked.Pos} " +

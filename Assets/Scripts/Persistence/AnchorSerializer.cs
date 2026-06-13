@@ -74,22 +74,26 @@ namespace Gate2Reality.Persistence
             }
 
             into.anchors = records;
-            into.fingerprint = ComputeFingerprint(worldPos);
+            // Fingerprint uses only YOLO-detectable (semantic) anchors: Chair/Book/Cup.
+            // Echo zones are procedural and can't be re-detected by YOLO in L2.
+            into.fingerprint = ComputeSemanticFingerprint(all);
         }
 
         /// <summary>
-        /// Computes a fingerprint from the registry without modifying ProgressData.
-        /// Useful for Stage A calibration logging.
+        /// Computes a semantic fingerprint (Chair/Book/Cup only) from the registry.
+        /// Useful for Stage A calibration logging. Matches what Capture() stores.
         /// </summary>
         public static RoomFingerprint Fingerprint(IAnchorRegistry reg)
         {
             if (reg == null) return EmptyFingerprint();
-            var all = reg.All;
-            var positions = new Vector3[all.Count];
-            for (int i = 0; i < all.Count; i++)
-                positions[i] = all[i].t != null ? all[i].t.position : Vector3.zero;
-            return ComputeFingerprint(positions);
+            return ComputeSemanticFingerprint(reg.All);
         }
+
+        /// <summary>True for labels that YOLO can detect and that form the room fingerprint.</summary>
+        public static bool IsSemanticLabel(NarrativeLabel lbl) =>
+            lbl == NarrativeLabel.Chair ||
+            lbl == NarrativeLabel.Book  ||
+            lbl == NarrativeLabel.Cup;
 
         /// <summary>
         /// Checks whether two fingerprints describe the same room geometry
@@ -111,6 +115,26 @@ namespace Gate2Reality.Persistence
         }
 
         // ─────────────────────────────────────────────────────────────────────
+
+        private static RoomFingerprint ComputeSemanticFingerprint(
+            IReadOnlyList<(int nodeIndex, NarrativeLabel label, Transform t)> all)
+        {
+            // Pre-count to avoid a list allocation in the hot path.
+            int count = 0;
+            for (int i = 0; i < all.Count; i++)
+                if (IsSemanticLabel(all[i].label) && all[i].t != null) count++;
+
+            if (count == 0) return EmptyFingerprint();
+
+            var positions = new Vector3[count];
+            int idx = 0;
+            for (int i = 0; i < all.Count; i++)
+            {
+                if (IsSemanticLabel(all[i].label) && all[i].t != null)
+                    positions[idx++] = all[i].t.position;
+            }
+            return ComputeFingerprint(positions);
+        }
 
         private static RoomFingerprint ComputeFingerprint(Vector3[] positions)
         {
