@@ -1,0 +1,63 @@
+// Gate2Reality — unityLibrary Gradle template (Custom Main Gradle Template).
+// Сюда компилируется Kotlin-мост NarrativeLlmBridge.kt из Assets/Plugins/Android,
+// поэтому именно здесь подключаются Kotlin-плагин и MediaPipe tasks-genai —
+// без этого .kt не соберётся (launcher-модуль даёт классы только в рантайме,
+// не на compile-classpath unityLibrary).
+//
+// ВНИМАНИЕ: токены вида **APIVERSION** заполняет Unity при генерации. Набор
+// токенов привязан к версии редактора — при включении «Custom Main Gradle
+// Template» Unity сверяет шаблон; если редактор иной версии, дайте ему
+// перегенерировать и перенесите правки (зависимости/noCompress) поверх.
+
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.24'
+
+    // On-device MLLM (Gemma int4 .task). Полностью офлайн: модель доставляется
+    // Play Asset Delivery в filesDir, сеть в рантайме не нужна.
+    implementation 'com.google.mediapipe:tasks-genai:0.10.14'
+**DEPS**
+}
+
+android {
+    namespace "com.unity3d.player"
+    ndkPath "**NDKPATH**"
+
+    compileSdkVersion **APIVERSION**
+    buildToolsVersion '**BUILDTOOLS**'
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    defaultConfig {
+        minSdkVersion **MINSDKVERSION**
+        targetSdkVersion **TARGETSDKVERSION**
+        ndk {
+            abiFilters **ABIFILTERS**
+        }
+        versionCode **VERSIONCODE**
+        versionName '**VERSIONNAME**'
+        consumerProguardFiles 'proguard-unity.txt'**USER_PROGUARD**
+    }
+
+    lintOptions {
+        abortOnError false
+    }
+
+    aaptOptions {
+        // Модель MLLM (.task) и веса Sentis (.sentis/.onnx) НЕ сжимаем —
+        // нужен mmap-доступ без распаковки в рантайме.
+        noCompress = ['.unity3d', '.ress', '.resource', '.obb', '.bundle', '.unityexp',
+                      '.task', '.sentis', '.onnx'] + unityStreamingAssets.tokenize(', ')
+        ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~"
+    }
+**PACKAGING_OPTIONS**
+}
+**IL_CPP_BUILD_SETUP**
+**SOURCE_BUILD_SETUP**
+**EXTERNAL_SOURCES**

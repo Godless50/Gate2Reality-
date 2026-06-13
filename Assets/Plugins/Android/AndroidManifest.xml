@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Gate2Reality — Custom Main Manifest (Assets/Plugins/Android/AndroidManifest.xml).
+
+  PRIVACY (чек-лист §2/§11): разрешение CAMERA — единственное. INTERNET явно
+  УДАЛЯЕТСЯ из слитого манифеста (tools:node="remove"): даже если транзитивная
+  зависимость попробует его добавить, его в финальном APK не будет. Это и есть
+  доказуемая основа обещания «всё на устройстве, ни один кадр не уходит в сеть».
+
+  AR (чек-лист §3): ARCore — Required. Глубина настраивается в XR Plug-in
+  Management (ARCore Depth = Required), не в манифесте.
+
+  ВНИМАНИЕ к Application Entry Point: ниже объявлена классическая
+  com.unity3d.player.UnityPlayerActivity. Если в Player Settings выбран
+  GameActivity (дефолт некоторых конфигов Unity 6) — замените имя активити на
+  com.unity3d.player.UnityPlayerGameActivity и тему на
+  @style/BaseUnityGameActivityTheme.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Единственное разрешение: камера для AR -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- PRIVACY: вычищаем INTERNET, как бы кто его ни добавил -->
+    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
+
+    <!-- Геолокации нет и не будет: убираем превентивно -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" tools:node="remove" />
+
+    <!-- AR обязателен: устройство без ARCore не увидит приложение в Play -->
+    <uses-feature android:name="android.hardware.camera.ar" android:required="true" />
+    <uses-feature android:glEsVersion="0x00030000" android:required="true" />
+
+    <application
+        android:allowBackup="false"
+        android:hardwareAccelerated="true"
+        tools:node="merge">
+
+        <!-- ARCore Required: установит ARCore из Play при необходимости -->
+        <meta-data android:name="com.google.ar.core" android:value="required" />
+
+        <!-- Vulkan-приоритет рендера — настраивается Graphics API в Player Settings;
+             здесь оставляем Unity управлять activity-атрибутами через merge. -->
+
+        <activity
+            android:name="com.unity3d.player.UnityPlayerActivity"
+            android:theme="@style/UnityThemeSelector"
+            android:screenOrientation="fullSensor"
+            android:launchMode="singleTask"
+            android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density"
+            android:hardwareAccelerated="false"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data android:name="unityplayer.UnityActivity" android:value="true" />
+        </activity>
+    </application>
+</manifest>

@@ -1,7 +1,9 @@
 apply plugin: 'com.android.application'
 
-// Gate2Reality launcher Gradle template
-// Adds MediaPipe Tasks-GenAI for on-device LLM (Gemma)
+// Gate2Reality — launcher Gradle template (Custom Launcher Gradle Template).
+// Зависимость MediaPipe живёт в mainTemplate.gradle (unityLibrary), где
+// компилируется Kotlin-мост; здесь — только сборка приложения и упаковка.
+// arm64-only: Pixel 9 / S26 / HONOR 90 — все ARM64 (см. чек-лист §2).
 
 android {
     compileSdkVersion **APIVERSION**
@@ -17,7 +19,7 @@ android {
     }
 
     aaptOptions {
-        noCompress = ['.unity3d', '.ress', '.resource', '.obb'] + unityStreamingAssets.tokenize(', ')
+        noCompress = ['.unity3d', '.ress', '.resource', '.obb', '.task', '.sentis', '.onnx'] + unityStreamingAssets.tokenize(', ')
         ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~"
     }
 
@@ -31,7 +33,5 @@ android {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    // MediaPipe Tasks GenAI for Gemma on-device inference
-    implementation 'com.google.mediapipe:tasks-genai:0.10.14'
     **DEPS**
 }

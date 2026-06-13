@@ -1,0 +1,33 @@
+# Gate2Reality — Custom Proguard File (Assets/Plugins/Android/proguard-user.txt).
+# Включается автоматически при «Custom Proguard File» в Player Settings и при
+# Minify (R8) в релизе. БЕЗ этих правил R8 переименует/вырежет Kotlin-мост MLLM,
+# и AndroidJavaProxy/JNI-вызовы из C# отвалятся в рантайме.
+
+# --- Мост MLLM: зовётся из C# по строковым именам классов/интерфейса ---
+#     (OnDeviceNarrativeGenerator: AndroidJavaClass("com.gate2reality.llm.NarrativeLlmBridge"),
+#      AndroidJavaProxy("com.gate2reality.llm.LlmCallback"))
+-keep class com.gate2reality.llm.** { *; }
+-keepclassmembers class com.gate2reality.llm.** { *; }
+-keep interface com.gate2reality.llm.** { *; }
+
+# --- MediaPipe Tasks GenAI (рефлексия + JNI внутри) ---
+-keep class com.google.mediapipe.** { *; }
+-keepclassmembers class com.google.mediapipe.** { *; }
+-dontwarn com.google.mediapipe.**
+
+# --- ARCore ---
+-keep class com.google.ar.** { *; }
+-dontwarn com.google.ar.**
+
+# --- Unity player / JNI мост ---
+-keep class com.unity3d.player.** { *; }
+-keepclassmembers class com.unity3d.player.** { *; }
+
+# --- Kotlin runtime metadata (корутины/HandlerThread моста) ---
+-keep class kotlin.Metadata { *; }
+-dontwarn kotlin.**
+
+# --- Имена методов, дёргаемых рефлексией из Unity (UnitySendMessage и т.п.) ---
+-keepclassmembers class * {
+    @com.unity3d.player.* <methods>;
+}

@@ -101,6 +101,11 @@ Definitive setup для Pixel 9 / Galaxy S26. Порядок имеет знач
       (версию сверить с актуальной; API класса LlmInference менялось между релизами)
 - [ ] Модель `.task` — через **Play Asset Delivery (install-time)** в `filesDir/models/`
 - [ ] Тест фолбэка: запуск БЕЗ модели — шёпоты идут из заготовок, игра не ломается
+- [ ] **proguard**: `Assets/Plugins/Android/proguard-user.txt` + Minify(R8) в релизе —
+      иначе мост `com.gate2reality.llm.*` будет вырезан/переименован (см. `docs/ANDROID_BUILD.md`)
+- [ ] Android-обвязка готова: `AndroidManifest.xml` (CAMERA-only, INTERNET removed),
+      `mainTemplate.gradle` (Kotlin+genai), `gradleTemplate.properties` (AndroidX).
+      Подробности и нюанс GameActivity — `docs/ANDROID_BUILD.md`
 
 ## 10. Аудио
 
