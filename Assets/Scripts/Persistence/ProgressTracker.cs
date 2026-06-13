@@ -11,8 +11,9 @@ namespace Gate2Reality.Persistence
     /// автозапуск сцены на себя и возобновляет с сохранённого узла.
     ///
     /// ПОРЯДОК СТАРТА: в Awake читаем сейв и зовём SuppressAutoStart(); в Start —
-    /// если есть relocalizer, запускаем Relocalize и стартуем сцену по коллбэку;
-    /// иначе сразу StartSceneAt. Awake всегда предшествует Start — гонки нет.
+    /// если меню не взяло управление (DeferToMenu) — запускаем релокализацию и
+    /// StartSceneAt. Если меню есть — ждём явного BeginResume/BeginFreshStart.
+    /// Awake всегда предшествует Start — гонки нет.
     ///
     /// ЗАПИСЬ ЯКОРЕЙ: на каждом OnNodeActivated вызываем AnchorSerializer.Capture,
     /// если AnchorRegistry заполнен. Сейв включает относительные позы объектов
@@ -43,6 +44,11 @@ namespace Gate2Reality.Persistence
         private ProgressData _data;
         private bool _shouldResume;
         private int _resumeNodeIndex;
+
+        // Set by MainMenuController.Awake() when it wants to own the start moment.
+        // Checked in Start() — all Awakes run before any Start, so no race condition.
+        private bool _menuDecisionPending;
+        private bool _resumeStarted; // guard against double-invoke
 
         private void Awake()
         {
@@ -80,31 +86,49 @@ namespace Gate2Reality.Persistence
 
         private void Start()
         {
+            if (_menuDecisionPending) return; // MainMenuController drives the start
             if (!_shouldResume || narrativeManager == null) return;
+            RunResumeLogic();
+        }
 
-            if (relocalizer != null)
-            {
-                // Relocalize first; start scene in callback with restored targets
-                relocalizer.Relocalize(_data, result =>
-                {
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-                    Debug.Log($"[Gate2Reality] Resume via L{result.Level}: глава {chapterId}, узел {_resumeNodeIndex}.");
-#endif
-                    if (result.NodeAnchors != null)
-                    {
-                        foreach (var kvp in result.NodeAnchors)
-                            narrativeManager.SetNodeRuntimeTarget(kvp.Key, kvp.Value);
-                    }
-                    narrativeManager.StartSceneAt(_resumeNodeIndex);
-                });
-            }
-            else
-            {
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-                Debug.Log($"[Gate2Reality] Resume (без релокализации): глава {chapterId}, узел {_resumeNodeIndex}.");
-#endif
-                narrativeManager.StartSceneAt(_resumeNodeIndex);
-            }
+        // =====================================================================
+        // ПУБЛИЧНОЕ API — меню / continue-screen
+        // =====================================================================
+
+        /// <summary>
+        /// Вызывается MainMenuController.Awake() чтобы предотвратить авто-resume
+        /// из ProgressTracker.Start(). Меню само вызовет BeginResume или BeginFreshStart.
+        /// </summary>
+        public void DeferToMenu() => _menuDecisionPending = true;
+
+        /// <summary>
+        /// Вызывается MainMenuController по нажатию «Продолжить».
+        /// Запускает релокализацию + StartSceneAt.
+        /// </summary>
+        public void BeginResume()
+        {
+            if (_resumeStarted) return;
+            _resumeStarted = true;
+            _menuDecisionPending = false;
+
+            if (_shouldResume && narrativeManager != null)
+                RunResumeLogic();
+            else if (narrativeManager != null)
+                narrativeManager.StartScene(); // no save but menu asked to continue — just start
+        }
+
+        /// <summary>
+        /// Вызывается MainMenuController по нажатию «Новая игра».
+        /// Сбрасывает сейв и стартует сцену с нуля.
+        /// </summary>
+        public void BeginFreshStart()
+        {
+            if (_resumeStarted) return;
+            _resumeStarted = true;
+            _menuDecisionPending = false;
+
+            ClearProgress();
+            if (narrativeManager != null) narrativeManager.StartScene();
         }
 
         // =====================================================================
@@ -117,7 +141,6 @@ namespace Gate2Reality.Persistence
                 ? narrativeManager.CurrentNodeIndex
                 : nodeIndex;
 
-            // Capture anchor positions if registry has entries
             if (anchorRegistry != null && anchorRegistry.All.Count > 0)
                 AnchorSerializer.Capture(anchorRegistry, referenceAnchorLabel, _data);
 
@@ -128,7 +151,6 @@ namespace Gate2Reality.Persistence
         {
             _data.crossedOver = true;
 
-            // Final anchor capture at portal crossing
             if (anchorRegistry != null && anchorRegistry.All.Count > 0)
                 AnchorSerializer.Capture(anchorRegistry, referenceAnchorLabel, _data);
 
@@ -151,12 +173,42 @@ namespace Gate2Reality.Persistence
         }
 
         // =====================================================================
-        // ПУБЛИЧНОЕ API
+        // ВНУТРЕННЯЯ ЛОГИКА
+        // =====================================================================
+        private void RunResumeLogic()
+        {
+            if (relocalizer != null)
+            {
+                relocalizer.Relocalize(_data, result =>
+                {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                    Debug.Log($"[Gate2Reality] Resume L{result.Level}: глава {chapterId}, узел {_resumeNodeIndex}.");
+#endif
+                    if (result.NodeAnchors != null)
+                    {
+                        foreach (var kvp in result.NodeAnchors)
+                            narrativeManager.SetNodeRuntimeTarget(kvp.Key, kvp.Value);
+                    }
+                    narrativeManager.StartSceneAt(_resumeNodeIndex);
+                });
+            }
+            else
+            {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                Debug.Log($"[Gate2Reality] Resume (без релокализации): глава {chapterId}, узел {_resumeNodeIndex}.");
+#endif
+                narrativeManager.StartSceneAt(_resumeNodeIndex);
+            }
+        }
+
+        // =====================================================================
+        // ПУБЛИЧНОЕ API — утилиты
         // =====================================================================
         public void ClearProgress()
         {
             ProgressStore.Clear();
             _data = new ProgressData { chapter = chapterId };
+            _shouldResume = false;
             anchorRegistry?.Clear();
         }
 
