@@ -240,3 +240,96 @@ adb logcat -c && adb logcat -v time Unity:I *:S | grep -E "Gate2Reality|Exceptio
 | FPS (cap 30)                | стабильные 30   | < 27         |
 | Gemma-2B латентность (12ГБ) | 1.5–3 с (таймаут спасает) | OOM-килл |
 | Батарея за 15 мин главы     | 4–6%            | > 9%         |
+
+---
+
+## 16. Сохранение / возобновление + персистентные якоря + меню
+
+Подсистема кросс-сессионного восстановления: при повторном входе игрок
+оказывается в той же комнате с теми же якорями (стул/книга/чашка/зоны),
+без повторного прохождения. Всё **offline, on-device** — никакой сети.
+
+### 16.1 Компоненты на `[Gate2Reality Core]`
+
+- [ ] **AnchorRegistry** — рантайм-реестр живых Transform якорей. Без ссылок,
+      просто положить на Core. Его читают все остальные.
+- [ ] **OfflineAnchorRelocalizer** — трёхуровневое восстановление (L1→L2→L3).
+      Связи в инспекторе:
+      - `anchorRegistry` = AnchorRegistry (тот же объект)
+      - `detector` = YoloObjectDetector (для L2 YOLO-окна)
+      - `arCamera` = Main Camera (для L3 относительной геометрии)
+      - `enableL2` = ON (HONOR 90 подтверждён), `l2WindowSeconds`/`l2FingerprintTolerance`
+        оставить дефолт — их перезапишет DeviceTuningProfile по тиру
+- [ ] **ProgressTracker** — связать новые поля:
+      - `anchorRegistry` = AnchorRegistry
+      - `referenceAnchorLabel` = **Chair** (опорная система отсчёта)
+      - `relocalizer` = OfflineAnchorRelocalizer
+      - `resumeOnStart` = ON
+
+### 16.2 AnchorRegistrationHook на эффектах (КРИТИЧНО)
+
+Без этого реестр пуст → сейв пуст → восстановление всегда падает в L3.
+На КАЖДЫЙ из трёх семантических эффектов добавить компонент
+**AnchorRegistrationHook** (он в сборке Persistence, на эффекты ссылок не плодит):
+
+| GameObject          | narrativeManager | anchorRegistry | nodeIndex | label |
+|---------------------|------------------|----------------|-----------|-------|
+| ChairEffect         | NarrativeManager | AnchorRegistry | 0         | Chair |
+| BookEffect          | NarrativeManager | AnchorRegistry | 1         | Book  |
+| CupEffect           | NarrativeManager | AnchorRegistry | 2         | Cup   |
+
+- [ ] Хук регистрирует transform эффекта на `OnNodeActivated` — Trigger()
+      срабатывает РАНЬШЕ события, поза уже снэпнута, кадровой задержки не нужно.
+
+### 16.3 EchoZonePlacer (Сцена 2)
+
+- [ ] `EchoZonePlacer.anchorRegistry` = AnchorRegistry. После размещения зон
+      они регистрируются как `EchoZone` (nodeIndex 3/4). В fingerprint НЕ входят
+      (YOLO их не видит), но сохраняются в `anchors[]` для L3-фолбэка.
+
+### 16.4 DeviceTuningProfile
+
+- [ ] `DeviceTuningProfile.relocalizer` = OfflineAnchorRelocalizer. По тиру
+      ставит окно L2: Flagship 2с / Mid 3с / Low 4с (медленнее YOLO → шире окно).
+
+### 16.5 Главное меню (Continue / New Game)
+
+Отдельный Canvas поверх сцены. **MainMenuController** в Awake вызывает
+`NarrativeManager.SuppressAutoStart()` и (если сейв есть) `ProgressTracker.DeferToMenu()` —
+все Awake выполняются до Start, поэтому ProgressTracker.Start() увидит флаг и
+не стартует сам. Сцена ждёт выбора игрока.
+
+- [ ] **MainMenuController** связи:
+      - `progressTracker` = ProgressTracker, `narrativeManager` = NarrativeManager
+      - `panelGroup` = CanvasGroup панели меню
+      - `continueSection` / `continueInfoLabel` / `continueButton` — блок «Продолжить»
+        (прячется, если сейва нет), `newGameButton` / `newGameLabel`
+      - `fadeOutSeconds` = 0.4
+- [ ] Кнопки: Continue → `progressTracker.BeginResume()`, New Game →
+      `BeginFreshStart()` (с подтверждением, если есть прогресс — затирает сейв).
+      Без сейва видна только одна кнопка «Начать».
+- [ ] Script Execution Order: MainMenuController **раньше** ProgressTracker
+      (вместе с DeviceTuningProfile в −100 группе достаточно — главное раньше Start).
+
+### 16.6 Глава 2: перенос якорей
+
+- [ ] `ChapterTwoDirector.ch1AnchorRegistry` = AnchorRegistry из главы 1.
+      Директор читает якоря из реестра, инспекторные массивы — фолбэк.
+
+### 16.7 Смоук-тест сохранения
+
+1. Пройти до Чашки (узлы 0–2 активированы) → свернуть приложение / убить процесс.
+2. Перезапуск → меню показывает **Continue: «the cup · N min ago»**.
+3. Continue → L1 (тёплый возврат) или L2 (YOLO находит стул/книгу/чашку за окно)
+   → якоря на местах, прогресс с узла 2. Debug-HUD: `Reloc: L1/L2 N anchor(s)`.
+4. Унести телефон в другую комнату → Continue → L2 fingerprint mismatch → **L3**:
+   якоря раскладываются относительно камеры (`Reloc: L3`), guard-подсказки доводят.
+5. New Game при наличии сейва → подтверждение → сейв стёрт, реестр очищен,
+   старт с нуля.
+6. **Миграция v1→v2:** положить старый сейв без `anchors` → загрузка не падает,
+   `anchors = null` → сразу L3, сцена стартует штатно.
+
+### Privacy-инвариант L2 (проверить)
+- [ ] L2 на короткое окно снимает person-only (`SetPersonOnlyMode(false)`),
+      собирает детекции, **немедленно** возвращает person-only. Окно ≤ l2WindowSeconds.
+      Кадры не покидают устройство, person-детекции не логируются.
