@@ -1,0 +1,19 @@
+{
+  "name": "Gate2Reality.Scene",
+  "rootNamespace": "Gate2Reality.Scene",
+  "references": [
+    "Gate2Reality.Narrative",
+    "Gate2Reality.Detection",
+    "Gate2Reality.Effects",
+    "Gate2Reality.Safety"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

@@ -1,0 +1,18 @@
+{
+  "name": "Gate2Reality.Narrative",
+  "rootNamespace": "Gate2Reality.Narrative",
+  "references": [
+    "Gate2Reality.Detection",
+    "Unity.XR.ARFoundation",
+    "Unity.InputSystem"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

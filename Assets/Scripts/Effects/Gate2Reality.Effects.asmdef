@@ -1,0 +1,18 @@
+{
+  "name": "Gate2Reality.Effects",
+  "rootNamespace": "Gate2Reality.Effects",
+  "references": [
+    "Gate2Reality.Narrative",
+    "Gate2Reality.Detection",
+    "Unity.XR.ARFoundation"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

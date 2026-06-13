@@ -1,0 +1,17 @@
+{
+  "name": "Gate2Reality.Safety",
+  "rootNamespace": "Gate2Reality.Safety",
+  "references": [
+    "Gate2Reality.Detection",
+    "Gate2Reality.Narrative"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
