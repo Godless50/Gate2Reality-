@@ -44,7 +44,7 @@ namespace Gate2Reality.Tests
         // GameObject создаётся ВЫКЛЮЧЕННЫМ: иначе Awake (BuildCache по nodes)
         // выполнится до инжекта узлов и упадёт на null-массиве.
         private static NarrativeManager BuildManager(NarrativeNode[] nodes,
-            float idleThreshold = 45f, float escalation = 15f)
+            float idleThreshold = 45f, float escalation = 15f, bool resetIdleOnProgress = false)
         {
             var go = new GameObject("nm");
             go.SetActive(false);
@@ -53,8 +53,23 @@ namespace Gate2Reality.Tests
             SetPrivate(nm, "autoStartOnStart", false);
             SetPrivate(nm, "idleThresholdSeconds", idleThreshold);
             SetPrivate(nm, "escalationIntervalSeconds", escalation);
+            SetPrivate(nm, "resetIdleOnProgress", resetIdleOnProgress);
             go.SetActive(true); // теперь Awake → BuildCache по готовому массиву
             return nm;
+        }
+
+        // Прокачивает кадры, скармливая валидную детекцию каждый кадр.
+        private static IEnumerator FeedDetections(NarrativeManager nm, float seconds)
+        {
+            float t = 0f;
+            while (t < seconds)
+            {
+                var pose = new Pose(Vector3.zero, Quaternion.identity);
+                var evt = new DetectionEvent(NarrativeLabel.Chair, in pose, 0.95f, 0.5f);
+                nm.ReportDetection(in evt);
+                t += Time.deltaTime;
+                yield return null;
+            }
         }
 
         [UnityTest]
@@ -120,15 +135,40 @@ namespace Gate2Reality.Tests
             Object.Destroy(nm.gameObject);
         }
 
-        // ПРИМЕЧАНИЕ (расхождение код/комментарий, найдено тестами):
-        // поле _idleTimer прокомментировано как «секунды с последнего прогресса»,
-        // но реализация сбрасывает его только при входе в узел (ResetIdleState),
-        // а TickGuard инкрементит каждый кадр НЕЗАВИСИМО от детекций. Поэтому
-        // guard срабатывает по «времени в узле», а не по «времени без прогресса».
-        // Тест на «прогресс сбрасывает простой» сознательно НЕ добавлен — он
-        // кодировал бы предполагаемое, а не фактическое поведение. Если задумка
-        // была иной — это однострочный фикс в ReportDetection/Update (сброс
-        // _idleTimer при _targetSeenThisFrame), но менять дизайн-поведение ядра
-        // без решения автора не стал.
+        // Семантика resetIdleOnProgress (опция, закрывшая расхождение код/коммент
+        // по _idleTimer). По умолчанию OFF: guard считает «время в узле» —
+        // детекции его не сбрасывают, маяк срабатывает даже при активном игроке.
+        [UnityTest]
+        public IEnumerator Guard_DefaultOff_FiresDespiteProgress()
+        {
+            NarrativeManager nm = BuildManager(new[] { SemanticNode(10f) },
+                idleThreshold: 0.3f, escalation: 10f, resetIdleOnProgress: false);
+
+            bool beacon = false;
+            nm.OnAudioBeaconRequested += _ => beacon = true;
+            nm.StartScene();
+
+            yield return FeedDetections(nm, 0.6f);
+
+            Assert.IsTrue(beacon, "при OFF guard считает время в узле — маяк срабатывает");
+            Object.Destroy(nm.gameObject);
+        }
+
+        // ON: активный прогресс держит guard в покое («секунды с последнего прогресса»).
+        [UnityTest]
+        public IEnumerator Guard_ResetOnProgress_StaysDormantWhileActive()
+        {
+            NarrativeManager nm = BuildManager(new[] { SemanticNode(10f) },
+                idleThreshold: 0.3f, escalation: 10f, resetIdleOnProgress: true);
+
+            bool beacon = false;
+            nm.OnAudioBeaconRequested += _ => beacon = true;
+            nm.StartScene();
+
+            yield return FeedDetections(nm, 0.6f); // > порога, но прогресс каждый кадр
+
+            Assert.IsFalse(beacon, "при ON активность игрока держит guard в покое");
+            Object.Destroy(nm.gameObject);
+        }
     }
 }

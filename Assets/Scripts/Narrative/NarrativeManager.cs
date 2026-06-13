@@ -70,6 +70,12 @@ namespace Gate2Reality.Narrative
         [Tooltip("Повтор аудио-маяка после полной эскалации")]
         [SerializeField] private float beaconRepeatSeconds = 30f;
 
+        [Tooltip("ON: активный dwell-прогресс сбрасывает guard-простой (трактовка " +
+                 "«секунды с последнего прогресса»). OFF (по умолчанию): guard считает " +
+                 "время в узле — поведение as-tested сборки. На коротких dwell Главы I " +
+                 "разница незаметна; проявляется на длинных dwell / залипании детекции.")]
+        [SerializeField] private bool resetIdleOnProgress = false;
+
         // =====================================================================
         // ПУБЛИЧНЫЕ СОБЫТИЯ (подписка из Step 3/4: аудио, пост-процесс, VFX)
         // C#-события вместо UnityEvent: Invoke() без аллокаций и быстрее.
@@ -105,7 +111,7 @@ namespace Gate2Reality.Narrative
 
         private int _currentNodeIndex = -1;
         private NarrativeNode _currentNode;       // кэш, чтобы не индексировать массив в Update
-        private float _idleTimer;                 // секунды с последнего прогресса
+        private float _idleTimer;                 // время в узле; при resetIdleOnProgress — с последнего прогресса
         private GuardStage _guardStage;
         private float _nextEscalationAt;          // абсолютное значение _idleTimer для след. ступени
         private bool _sceneRunning;
@@ -228,6 +234,12 @@ namespace Gate2Reality.Narrative
                     ActivateCurrentNode();
                     return; // узел сменился — guard-таймер уже сброшен
                 }
+
+                // Опционально: активный прогресс трактуем как «не застрял» и
+                // сбрасываем guard-простой (поведение из описания _idleTimer:
+                // «секунды с последнего прогресса»). По умолчанию выключено —
+                // ноль изменений к as-tested сборке (guard считает время в узле).
+                if (resetIdleOnProgress) ResetGuardDueToActivity();
             }
             else
             {
@@ -401,6 +413,18 @@ namespace Gate2Reality.Narrative
             _idleTimer = 0f;
             _guardStage = GuardStage.Dormant;
             _nextEscalationAt = 0f;
+        }
+
+        /// <summary>
+        /// Сброс guard из-за активности игрока (прогресс dwell при resetIdleOnProgress).
+        /// Если guard уже визуально обесцветил мир — возвращаем краски, как и при
+        /// активации узла, иначе десатурация «зависнет» до смены узла.
+        /// </summary>
+        private void ResetGuardDueToActivity()
+        {
+            if (_guardStage >= GuardStage.Desaturated)
+                OnSaturationRestoreRequested?.Invoke();
+            ResetIdleState();
         }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
