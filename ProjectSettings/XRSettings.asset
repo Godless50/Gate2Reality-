@@ -1,0 +1,8 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!641 &1
+XRSettings:
+  m_ObjectHideFlags: 0
+  k_CurrentVersion: 0
+  m_StereoRenderingMode: 0
+  m_Use360StereoCapture: 0
