@@ -3,6 +3,7 @@
   "rootNamespace": "Gate2Reality.Detection",
   "references": [
     "Gate2Reality.Narrative",
+    "Unity.Collections",
     "Unity.XR.ARFoundation",
     "Unity.XR.ARSubsystems",
     "Unity.Sentis"

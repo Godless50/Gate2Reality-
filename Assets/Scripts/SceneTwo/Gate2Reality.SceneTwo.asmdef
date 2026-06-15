@@ -7,6 +7,7 @@
     "Gate2Reality.Effects",
     "Gate2Reality.Persistence",
     "Gate2Reality.Safety",
+    "Unity.Collections",
     "Unity.XR.ARFoundation",
     "Unity.XR.ARSubsystems"
   ],
