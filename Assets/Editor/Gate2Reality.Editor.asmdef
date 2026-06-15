@@ -2,7 +2,17 @@
   "name": "Gate2Reality.Editor",
   "rootNamespace": "Gate2Reality.EditorTools",
   "references": [
-    "Gate2Reality.Narrative"
+    "Gate2Reality.Narrative",
+    "Gate2Reality.Detection",
+    "Gate2Reality.Effects",
+    "Gate2Reality.Safety",
+    "Gate2Reality.Persistence",
+    "Gate2Reality.UI",
+    "Gate2Reality.Scene",
+    "Unity.XR.ARFoundation",
+    "Unity.XR.CoreUtils",
+    "Unity.TextMeshPro",
+    "UnityEngine.UI"
   ],
   "includePlatforms": [
     "Editor"
