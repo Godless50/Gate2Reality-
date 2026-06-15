@@ -55,8 +55,10 @@ android {
     androidResources {
         // Модель MLLM (.task) и веса Sentis (.sentis/.onnx) НЕ сжимаем —
         // нужен mmap-доступ без распаковки в рантайме.
-        noCompress = ['.unity3d', '.ress', '.resource', '.obb', '.bundle', '.unityexp',
-                      '.task', '.sentis', '.onnx'] + unityStreamingAssets.tokenize(', ')
+        // AGP 8: noCompress — коллекция, дополняем через += (не перезаписываем =).
+        noCompress += ['.unity3d', '.ress', '.resource', '.obb', '.bundle', '.unityexp',
+                       '.task', '.sentis', '.onnx']
+        noCompress += unityStreamingAssets.tokenize(', ')
         ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~"
     }
 **PACKAGING_OPTIONS**
