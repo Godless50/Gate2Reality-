@@ -35,8 +35,8 @@ android {
     }
 
     defaultConfig {
-        minSdkVersion **MINSDKVERSION**
-        targetSdkVersion **TARGETSDKVERSION**
+        minSdk **MINSDKVERSION**
+        targetSdk **TARGETSDKVERSION**
         ndk {
             abiFilters **ABIFILTERS**
         }
@@ -48,11 +48,11 @@ android {
 **DEFAULT_CONFIG_SETUP**
     }
 
-    lintOptions {
+    lint {
         abortOnError false
     }
 
-    aaptOptions {
+    androidResources {
         // Модель MLLM (.task) и веса Sentis (.sentis/.onnx) НЕ сжимаем —
         // нужен mmap-доступ без распаковки в рантайме.
         noCompress = ['.unity3d', '.ress', '.resource', '.obb', '.bundle', '.unityexp',
