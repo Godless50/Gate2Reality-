@@ -5,7 +5,7 @@
     "Gate2Reality.Narrative",
     "Unity.XR.ARFoundation",
     "Unity.XR.ARSubsystems",
-    "Unity.Sentis"
+    "Unity.InferenceEngine"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

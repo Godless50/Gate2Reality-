@@ -38,7 +38,9 @@ namespace Gate2Reality.EditorTools
         [OnOpenAsset]
         public static bool OnOpenAsset(int instanceId, int line)
         {
+#pragma warning disable CS0618
             var obj = EditorUtility.InstanceIDToObject(instanceId) as NarrativeGraphAsset;
+#pragma warning restore CS0618
             if (obj == null) return false;
             var w = GetWindow<NarrativeGraphEditorWindow>("Narrative Graph");
             w._asset = obj;

@@ -1,6 +1,6 @@
 using System;
 using Unity.Collections;
-using Unity.Sentis;
+using Unity.InferenceEngine;
 using UnityEngine;
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
@@ -18,7 +18,7 @@ namespace Gate2Reality.Detection
     ///     -> конверсия в RGBA32 сразу в 640x640 (даунскейл на этапе конверсии,
     ///        дёшево и без промежуточных текстур)
     ///     -> Texture2D -> Tensor (TextureConverter, GPU)
-    ///     -> YOLOv8n int8 (Unity Sentis, backend GPUCompute / NNAPI)
+    ///     -> YOLOv8n int8 (Unity Inference Engine, backend GPUCompute / NNAPI)
     ///     -> асинхронный readback (НИКОГДА не блокируем кадр синхронным чтением!)
     ///     -> постпроцесс: фильтр классов {cup=41, chair=56, book=73} + NMS
     ///     -> DepthPoseProjector: 2D-бокс -> 3D-поза (Depth API, fallback-цепочка)
