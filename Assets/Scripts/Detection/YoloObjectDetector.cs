@@ -1,8 +1,5 @@
 using System;
 using Unity.Collections;
-// Unity 6000.4+: Sentis 2.x was renamed to Unity Inference Engine.
-// The package still ships a Unity.Sentis namespace alias for backward
-// compatibility, so this using works regardless of which name is installed.
 using Unity.Sentis;
 using UnityEngine;
 using UnityEngine.XR.ARFoundation;
