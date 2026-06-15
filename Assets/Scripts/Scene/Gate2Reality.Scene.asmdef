@@ -5,7 +5,9 @@
     "Gate2Reality.Narrative",
     "Gate2Reality.Detection",
     "Gate2Reality.Effects",
-    "Gate2Reality.Safety"
+    "Gate2Reality.Safety",
+    "Gate2Reality.UI",
+    "Unity.RenderPipelines.Core.Runtime"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

@@ -5,7 +5,8 @@
     "Gate2Reality.Narrative",
     "Gate2Reality.Detection",
     "Gate2Reality.Effects",
-    "Gate2Reality.Persistence"
+    "Gate2Reality.Persistence",
+    "Unity.RenderPipelines.Core.Runtime"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],
