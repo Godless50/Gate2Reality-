@@ -1,15 +1,17 @@
-// Gate2Reality base Gradle project template
+// Gate2Reality — Custom Base Gradle Project Template
+// Unity 6000.4 / Gradle 9: plugins{} block replaces legacy buildscript{classpath}.
+// В Gradle 9 токен **BUILD_SCRIPT_DEPS** содержит «id '...' apply false» —
+// это допустимо только внутри plugins{}, а не внутри buildscript{dependencies{}}.
+// Если Unity когда-либо откажется принять этот шаблон, дать ему перегенерировать
+// и перенести правки из repositories{} поверх.
+
+plugins {
+    id 'com.android.application' version '**GRADLE_PLUGIN_VERSION**' apply false
+    id 'com.android.library' version '**GRADLE_PLUGIN_VERSION**' apply false
+    **BUILD_SCRIPT_DEPS**
+}
+
 allprojects {
-    buildscript {
-        repositories {**ARTIFACTORYREPOSITORY**
-            google()
-            mavenCentral()
-        }
-        dependencies {
-            classpath 'com.android.tools.build:gradle:**GRADLE_PLUGIN_VERSION**'
-            **BUILD_SCRIPT_DEPS**
-        }
-    }
     repositories {**ARTIFACTORYREPOSITORY**
         google()
         mavenCentral()

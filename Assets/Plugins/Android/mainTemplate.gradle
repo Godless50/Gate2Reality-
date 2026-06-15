@@ -10,6 +10,7 @@
 // перегенерировать и перенесите правки (зависимости/noCompress) поверх.
 
 apply plugin: 'com.android.library'
+apply from: 'common.gradle'
 // [ВРЕМЕННО ОТКЛЮЧЕНО — первая AR-сборка] Kotlin-плагин + MediaPipe.
 // Причина: Unity 6000.4 (Gradle 9) ломает корневой baseProjectTemplate, как
 // только детектит .kt-источник (инъекция «id 'org.jetbrains.kotlin.android'»

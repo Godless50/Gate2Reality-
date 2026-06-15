@@ -1,4 +1,5 @@
 apply plugin: 'com.android.application'
+apply from: 'common.gradle'
 
 // Gate2Reality — launcher Gradle template (Custom Launcher Gradle Template).
 // Зависимость MediaPipe живёт в mainTemplate.gradle (unityLibrary), где
