@@ -43,6 +43,9 @@ android {
         versionCode **VERSIONCODE**
         versionName '**VERSIONNAME**'
         consumerProguardFiles 'proguard-unity.txt'**USER_PROGUARD**
+        // Unity 6: CMake-аргументы для GameActivity + Frame Pacing (Swappy).
+        // Токен обязателен начиная с 6000.x — иначе редактор требует обновить шаблон.
+**DEFAULT_CONFIG_SETUP**
     }
 
     lintOptions {
