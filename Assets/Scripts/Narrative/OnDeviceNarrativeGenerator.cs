@@ -23,7 +23,9 @@ namespace Gate2Reality.Narrative
     {
         [Header("Параметры инференса")]
         [SerializeField] private float timeoutSeconds = 3f;
-        [SerializeField] private int maxTokens = 48; // шёпот короткий, экономим миллисекунды
+#pragma warning disable CS0414 // used only in #if UNITY_ANDROID block
+        [SerializeField] private int maxTokens = 48;
+#pragma warning restore CS0414
 
         public bool IsModelAvailable { get; private set; }
 
