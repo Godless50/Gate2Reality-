@@ -1,5 +1,4 @@
 apply plugin: 'com.android.application'
-apply from: 'common.gradle'
 
 // Gate2Reality — launcher Gradle template (Custom Launcher Gradle Template).
 // Зависимость MediaPipe живёт в mainTemplate.gradle (unityLibrary), где
@@ -7,7 +6,7 @@ apply from: 'common.gradle'
 // arm64-only: Pixel 9 / S26 / HONOR 90 — все ARM64 (см. чек-лист §2).
 
 android {
-    compileSdkVersion **APIVERSION**
+    compileSdk **APIVERSION**
     buildToolsVersion '**BUILDTOOLS**'
 
     defaultConfig {
