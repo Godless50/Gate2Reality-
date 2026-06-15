@@ -1,9 +1,9 @@
 {
   "dependencies": {
-    "com.unity.xr.arfoundation": "6.1.0",
-    "com.unity.xr.arcore": "6.1.0",
+    "com.unity.xr.arfoundation": "6.4.0",
+    "com.unity.xr.arcore": "6.4.0",
     "com.unity.sentis": "2.1.0",
-    "com.unity.render-pipelines.universal": "17.0.3",
+    "com.unity.render-pipelines.universal": "17.4.0",
     "com.unity.inputsystem": "1.11.2",
     "com.unity.textmeshpro": "3.0.9",
     "com.unity.test-framework": "1.4.5",
