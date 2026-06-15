@@ -10,15 +10,20 @@
 // перегенерировать и перенесите правки (зависимости/noCompress) поверх.
 
 apply plugin: 'com.android.library'
-apply plugin: 'kotlin-android'
+// [ВРЕМЕННО ОТКЛЮЧЕНО — первая AR-сборка] Kotlin-плагин + MediaPipe.
+// Причина: Unity 6000.4 (Gradle 9) ломает корневой baseProjectTemplate, как
+// только детектит .kt-источник (инъекция «id 'org.jetbrains.kotlin.android'»
+// в старый формат шаблона), а MediaPipe всё равно не качается без сети при
+// сборке. C#-сторона (OnDeviceNarrativeGenerator.Awake) ловит отсутствие моста
+// и уходит в фолбэк на заготовки-шёпоты — функционально AR не страдает.
+// ВЕРНУТЬ MLLM: раскомментировать строки ниже и перенести NarrativeLlmBridge.kt
+// из Assets/Plugins/Android/Disabled~/ обратно в Assets/Plugins/Android/.
+// apply plugin: 'kotlin-android'
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.24'
-
-    // On-device MLLM (Gemma int4 .task). Полностью офлайн: модель доставляется
-    // Play Asset Delivery в filesDir, сеть в рантайме не нужна.
-    implementation 'com.google.mediapipe:tasks-genai:0.10.14'
+    // implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.24'
+    // implementation 'com.google.mediapipe:tasks-genai:0.10.14'
 **DEPS**
 }
 
