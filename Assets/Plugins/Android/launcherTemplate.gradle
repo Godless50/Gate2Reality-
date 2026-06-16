@@ -47,12 +47,11 @@ android {
 
 dependencies {
     // launcher — тонкий модуль приложения: зависит ТОЛЬКО от unityLibrary.
-    // Именно там движок (libunity/libil2cpp), AAR'ы ARCore/AR Foundation и наш
-    // privacy-манифест (CAMERA + запускаемая UnityPlayerActivity).
-    // ВАЖНО: здесь НЕЛЬЗЯ ставить токен **DEPS** — Unity разворачивает его в
-    // список AAR'ов (он принадлежит unityLibrary), и тогда launcher теряет
-    // project(':unityLibrary'), а с ним движок, разрешение CAMERA и активити.
-    // Так же сделан дефолтный launcherTemplate.gradle Unity (Tools/GradleTemplates).
+    // Там движок (libunity/libil2cpp), AAR'ы ARCore/AR Foundation и наш privacy-
+    // манифест (CAMERA + запускаемая UnityPlayerActivity). НЕ вставлять сюда
+    // Unity-токен зависимостей (со звёздочками): Unity развернёт его прямо в
+    // комментарии в список AAR'ов и сломает файл, а launcher потеряет unityLibrary.
+    // Дефолтный launcherTemplate.gradle Unity сделан так же (только project).
     implementation project(':unityLibrary')
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 }
