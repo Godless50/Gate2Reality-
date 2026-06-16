@@ -38,7 +38,6 @@
         android:allowBackup="false"
         android:hardwareAccelerated="true"
         tools:node="merge"
-        tools:replace="android:icon,android:label"
         tools:ignore="ManifestResource,DuplicateActivity,UnusedNamespace,MissingTranslation">
 
         <!-- ARCore Required: установит ARCore из Play при необходимости -->
