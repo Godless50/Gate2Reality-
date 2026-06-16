@@ -215,15 +215,20 @@ namespace Gate2Reality.Detection
 
             try
             {
-                // Конверсия YUV -> RGBA32 с одновременным даунскейлом до 640x640.
-                // ВНИМАНИЕ: это «squash»-ресайз (без letterbox). Для нарративных
-                // триггеров искажение аспекта некритично (модель устойчива),
-                // зато экономим целый проход копирования. Координаты боксов
-                // разжимаются обратно в DepthPoseProjector через viewport.
+                // XRCpuImage.Convert умеет ТОЛЬКО даунскейл: output <= input по
+                // каждой оси. CPU-кадры бывают разные (часто VGA 640x480 < 640),
+                // поэтому конвертим в размер кадра, ограниченный сверху InputSize,
+                // а финальный «squash» до 640x640 делает TextureConverter.ToTensor.
+                // Это всё тот же squash-ресайз (без letterbox): нормировка боксов
+                // на InputSize в PostProcess остаётся корректной.
+                int outW = Mathf.Min(InputSize, image.width);
+                int outH = Mathf.Min(InputSize, image.height);
+                EnsureConversionTarget(outW, outH);
+
                 var conversion = new XRCpuImage.ConversionParams
                 {
                     inputRect = new RectInt(0, 0, image.width, image.height),
-                    outputDimensions = new Vector2Int(InputSize, InputSize),
+                    outputDimensions = new Vector2Int(outW, outH),
                     outputFormat = TextureFormat.RGBA32,
                     // Зеркалим по Y: CPU-image идёт «вверх ногами» относительно текстур Unity.
                     transformation = XRCpuImage.Transformation.MirrorY
@@ -238,6 +243,20 @@ namespace Gate2Reality.Detection
             {
                 image.Dispose(); // обязательный возврат буфера ARCore
             }
+        }
+
+        // Текстура/буфер конверсии подгоняются под фактический размер CPU-кадра
+        // (один раз — разрешение камеры в сессии стабильно). ToTensor затем
+        // приводит к 640x640, поэтому нормировка координат на InputSize цела.
+        private void EnsureConversionTarget(int w, int h)
+        {
+            if (_cameraTexture.width == w && _cameraTexture.height == h &&
+                _conversionBuffer.IsCreated && _conversionBuffer.Length == w * h * 4)
+                return;
+
+            _cameraTexture.Reinitialize(w, h);
+            if (_conversionBuffer.IsCreated) _conversionBuffer.Dispose();
+            _conversionBuffer = new NativeArray<byte>(w * h * 4, Allocator.Persistent);
         }
 
         private void RunInferenceAsync()
