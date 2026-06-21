@@ -4,6 +4,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 using Gate2Reality.Narrative;
+using static System.Reflection.BindingFlags;
 
 namespace Gate2Reality.Tests
 {
@@ -129,6 +130,55 @@ namespace Gate2Reality.Tests
             Assert.IsTrue(particlesFired, "OnGuideParticlesRequested должен сработать");
             Assert.AreEqual(3, (byte)_guardStage.GetValue(_mgr), "стадия ParticlesFired");
         }
+
+        // ── Dwell accumulation (Gemma GPU) ──────────────────────────────────
+
+        [UnityTest]
+        public IEnumerator DwellAccumulator_AccumulatesWhileTargetSeen()
+        {
+            var go = new GameObject(); go.SetActive(false);
+            var mgr = go.AddComponent<NarrativeManager>();
+            var node = new NarrativeNode { dwellTimeSeconds = 10f };
+
+            SetField(mgr, "nodes", new[] { node });
+            SetField(mgr, "_sceneRunning", true);
+            SetField(mgr, "_currentNodeIndex", 0);
+            SetField(mgr, "_currentNode", node);
+
+            go.SetActive(true);
+            SetField(mgr, "_targetSeenThisFrame", true);
+            _update.Invoke(mgr, null);
+
+            yield return null;
+
+            Assert.Greater(node.DwellAccumulator, 0f, "DwellAccumulator should increase when target is seen");
+            Object.Destroy(go);
+        }
+
+        [UnityTest]
+        public IEnumerator DwellAccumulator_DecaysWhenTargetLost()
+        {
+            var go = new GameObject(); go.SetActive(false);
+            var mgr = go.AddComponent<NarrativeManager>();
+            var node = new NarrativeNode { dwellTimeSeconds = 10f };
+
+            SetField(mgr, "nodes", new[] { node });
+            SetField(mgr, "_sceneRunning", true);
+            SetField(mgr, "_currentNodeIndex", 0);
+            SetField(mgr, "_currentNode", node);
+            node.DwellAccumulator = 1.0f;
+
+            go.SetActive(true);
+            // _targetSeenThisFrame stays false → decay path
+            _update.Invoke(mgr, null);
+
+            yield return null;
+
+            Assert.Less(node.DwellAccumulator, 1.0f, "DwellAccumulator should decay when target is lost");
+            Object.Destroy(go);
+        }
+
+        // ────────────────────────────────────────────────────────────────────
 
         [UnityTest]
         public IEnumerator EnteringNewNode_ResetsGuardTimer()
