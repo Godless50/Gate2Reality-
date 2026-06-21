@@ -60,6 +60,32 @@ namespace Gate2Reality.Tests
 
         // ── NarrativeContext (Gemma-2, Library→Unknown fix by inspector) ─────
 
+        // ── Scene lifecycle (Gemma GPU) ───────────────────────────────────────
+
+        [Test]
+        public void IsSceneRunning_FalseAfterCompleteScene()
+        {
+            var go = new GameObject(); go.SetActive(false);
+            var mgr = go.AddComponent<NarrativeManager>();
+
+            typeof(NarrativeManager)
+                .GetField("nodes", F)
+                .SetValue(mgr, new NarrativeNode[] { new NarrativeNode { dwellTimeSeconds = 0f } });
+
+            go.SetActive(true);
+            mgr.StartScene();
+            Assert.IsTrue(mgr.IsSceneRunning);
+
+            typeof(NarrativeManager)
+                .GetMethod("CompleteScene", F)
+                .Invoke(mgr, null);
+
+            Assert.IsFalse(mgr.IsSceneRunning);
+            Object.DestroyImmediate(go);
+        }
+
+        // ── NarrativeContext (Gemma-2, Library→Unknown fix by inspector) ─────
+
         [Test]
         public void NarrativeContext_FocusObject_MatchesConstructorArg()
         {
