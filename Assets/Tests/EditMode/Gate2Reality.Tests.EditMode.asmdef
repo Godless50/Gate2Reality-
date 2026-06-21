@@ -1,0 +1,29 @@
+{
+  "name": "Gate2Reality.Tests.EditMode",
+  "rootNamespace": "Gate2Reality.Tests",
+  "references": [
+    "Gate2Reality.Narrative",
+    "Gate2Reality.Detection",
+    "Gate2Reality.Effects",
+    "Gate2Reality.Persistence",
+    "Gate2Reality.ChapterTwo",
+    "Gate2Reality.Safety",
+    "UnityEngine.TestRunner",
+    "UnityEditor.TestRunner"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "nunit.framework.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
