@@ -389,12 +389,14 @@ namespace Gate2Reality.Narrative
 
         private void EnterNode(int index)
         {
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (index < 0 || index >= nodes.Length)
             {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
                 Debug.LogError($"[Gate2Reality] Некорректный индекс узла: {index}");
+#endif
                 return;
             }
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[Gate2Reality] -> Узел '{nodes[index].nodeName}' ({nodes[index].condition.Describe()})");
 #endif
             _currentNodeIndex = index;
