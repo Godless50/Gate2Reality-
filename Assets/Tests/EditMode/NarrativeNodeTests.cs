@@ -31,5 +31,17 @@ namespace Gate2Reality.Tests
 
             Object.DestroyImmediate(go);
         }
+
+        [Test]
+        public void BuildCache_NullBehaviour_ProducesNullSlotInCache()
+        {
+            var node = new NarrativeNode();
+            node.triggerableBehaviours = new MonoBehaviour[] { null };
+
+            Assert.DoesNotThrow(() => node.BuildCache());
+
+            Assert.AreEqual(1, node.CachedTriggerables.Length);
+            Assert.IsNull(node.CachedTriggerables[0]);
+        }
     }
 }
