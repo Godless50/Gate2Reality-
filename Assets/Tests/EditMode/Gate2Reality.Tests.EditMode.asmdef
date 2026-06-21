@@ -8,6 +8,8 @@
     "Gate2Reality.Persistence",
     "Gate2Reality.ChapterTwo",
     "Gate2Reality.Safety",
+    "Gate2Reality.SceneTwo",
+    "Gate2Reality.UI",
     "UnityEngine.TestRunner",
     "UnityEditor.TestRunner"
   ],
