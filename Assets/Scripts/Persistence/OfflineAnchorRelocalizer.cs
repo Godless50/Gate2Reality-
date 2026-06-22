@@ -85,8 +85,12 @@ namespace Gate2Reality.Persistence
             }
 
             // L2: YOLO re-detection window
+#if UNITY_ANDROID && !UNITY_EDITOR
             if (enableL2 && detector != null &&
                 save?.anchors != null && save.anchors.Length > 0)
+#else
+            if (false)
+#endif
             {
                 var l2Output = new L2Result();
                 yield return StartCoroutine(RunL2(save, l2Output));
