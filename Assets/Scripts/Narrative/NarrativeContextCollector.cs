@@ -1,5 +1,7 @@
 using UnityEngine;
+#if UNITY_ANDROID && !UNITY_EDITOR
 using UnityEngine.XR.ARFoundation;
+#endif
 
 namespace Gate2Reality.Narrative
 {
@@ -18,7 +20,9 @@ namespace Gate2Reality.Narrative
     [DisallowMultipleComponent]
     public sealed class NarrativeContextCollector : MonoBehaviour
     {
+#if UNITY_ANDROID && !UNITY_EDITOR
         [SerializeField] private ARCameraManager cameraManager;
+#endif
         [SerializeField] private NarrativeManager narrativeManager;
 
         private float _brightness = 0.5f;       // экспоненциальное сглаживание
@@ -29,16 +33,21 @@ namespace Gate2Reality.Narrative
 
         private void OnEnable()
         {
+#if UNITY_ANDROID && !UNITY_EDITOR
             cameraManager.frameReceived += OnFrame;
+#endif
             narrativeManager.OnDetectionRelayed += OnDetection;
         }
 
         private void OnDisable()
         {
+#if UNITY_ANDROID && !UNITY_EDITOR
             cameraManager.frameReceived -= OnFrame;
+#endif
             narrativeManager.OnDetectionRelayed -= OnDetection;
         }
 
+#if UNITY_ANDROID && !UNITY_EDITOR
         private void OnFrame(ARCameraFrameEventArgs args)
         {
             // Сглаживаем, чтобы шёпот не «мигал» от пролетевшей тени.
@@ -52,6 +61,7 @@ namespace Gate2Reality.Narrative
                 _kelvin = args.lightEstimation.averageColorTemperature.Value;
             }
         }
+#endif
 
         private void OnDetection(DetectionEvent evt)
         {
