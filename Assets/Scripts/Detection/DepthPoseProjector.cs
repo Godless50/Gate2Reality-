@@ -1,7 +1,9 @@
 using System.Collections.Generic;
 using UnityEngine;
+#if UNITY_ANDROID && !UNITY_EDITOR
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
+#endif
 
 namespace Gate2Reality.Detection
 {
@@ -24,7 +26,9 @@ namespace Gate2Reality.Detection
     {
         [Header("Связи")]
         [SerializeField] private Camera arCamera;                 // камера из XR Origin
+#if UNITY_ANDROID && !UNITY_EDITOR
         [SerializeField] private ARRaycastManager raycastManager;
+#endif
 
         [Header("Fallback уровня 3")]
         [Tooltip("Типичный физический размер целевых объектов, м (медиана chair/book/cup). Используется для оценки дистанции по угловому размеру бокса.")]
@@ -34,7 +38,9 @@ namespace Gate2Reality.Detection
         [SerializeField] private float maxApproxDistance = 5f;
 
         // Преаллоцированный список хитов — ARRaycastManager пишет в него без GC.
+#if UNITY_ANDROID && !UNITY_EDITOR
         private static readonly List<ARRaycastHit> s_Hits = new List<ARRaycastHit>(8);
+#endif
 
         /// <summary>
         /// viewportPoint: центр бокса в координатах viewport (0..1).
@@ -47,6 +53,7 @@ namespace Gate2Reality.Detection
                 viewportPoint.x * Screen.width,
                 viewportPoint.y * Screen.height);
 
+#if UNITY_ANDROID && !UNITY_EDITOR
             // ---------- Уровень 1: Depth API ----------
             if (raycastManager.Raycast(screenPoint, s_Hits, TrackableType.Depth))
             {
@@ -63,6 +70,7 @@ namespace Gate2Reality.Detection
                 boundsRadius = EstimateRadius(bboxViewportWidth, worldPose.position);
                 return true;
             }
+#endif
 
             // ---------- Уровень 3: аппроксимационный маркер ----------
             // Дистанция из углового размера: d ≈ size / (2 * tan(angularHalfWidth)).

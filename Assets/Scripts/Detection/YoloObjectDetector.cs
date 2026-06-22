@@ -1,14 +1,19 @@
 using System;
 using Unity.Collections;
+#if UNITY_ANDROID && !UNITY_EDITOR
 using Unity.InferenceEngine;
+#endif
 using UnityEngine;
+#if UNITY_ANDROID && !UNITY_EDITOR
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
+#endif
 
 namespace Gate2Reality.Detection
 {
     using Gate2Reality.Narrative;
 
+#if UNITY_ANDROID && !UNITY_EDITOR
     /// <summary>
     /// On-device YOLO-детектор для Android 15 (Pixel 9 / S26).
     ///
@@ -435,4 +440,5 @@ namespace Gate2Reality.Detection
             }
         }
     }
+#endif
 }
