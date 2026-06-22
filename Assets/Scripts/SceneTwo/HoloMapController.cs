@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using Unity.Collections;
 using UnityEngine;
+#if UNITY_ANDROID && !UNITY_EDITOR
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
+#endif
 
 namespace Gate2Reality.SceneTwo
 {
@@ -19,6 +21,7 @@ namespace Gate2Reality.SceneTwo
     ///  - Top-down проекция: Y мира схлопывается в тонкие слои карты —
     ///    читаемость важнее объёма.
     /// </summary>
+#if UNITY_ANDROID && !UNITY_EDITOR
     [DisallowMultipleComponent]
     public sealed class HoloMapController : MonoBehaviour
     {
@@ -175,4 +178,5 @@ namespace Gate2Reality.SceneTwo
             }
         }
     }
+#endif
 }

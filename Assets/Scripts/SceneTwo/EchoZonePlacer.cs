@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+#if UNITY_ANDROID && !UNITY_EDITOR
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
+#endif
 
 namespace Gate2Reality.SceneTwo
 {
@@ -31,6 +33,7 @@ namespace Gate2Reality.SceneTwo
     ///     якорь «приклеивает» зону к реальной поверхности — без него зоны
     ///     уплывают на 10-20см и портал перестаёт лежать в стене.
     /// </summary>
+#if UNITY_ANDROID && !UNITY_EDITOR
     [DisallowMultipleComponent]
     public sealed class EchoZonePlacer : MonoBehaviour
     {
@@ -290,4 +293,5 @@ namespace Gate2Reality.SceneTwo
             return go.transform;
         }
     }
+#endif
 }

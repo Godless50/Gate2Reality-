@@ -21,7 +21,9 @@ namespace Gate2Reality.DebugTools
     public sealed class DetectionDebugHud : MonoBehaviour
     {
         [Header("Связи")]
+#if UNITY_ANDROID && !UNITY_EDITOR
         [SerializeField] private YoloObjectDetector detector;
+#endif
         [SerializeField] private NarrativeManager narrativeManager;
         [SerializeField] private HorrorSafetyGovernor safetyGovernor;
 
@@ -73,11 +75,13 @@ namespace Gate2Reality.DebugTools
 
         private void OnEnable()
         {
+#if UNITY_ANDROID && !UNITY_EDITOR
             if (detector != null)
             {
                 detector.OnRawDetection += HandleRawDetection;
                 detector.OnHumanPresenceChanged += HandleHumanPresence;
             }
+#endif
             if (safetyGovernor != null)
             {
                 safetyGovernor.OnIntensityChanged += HandleIntensity;
@@ -88,11 +92,13 @@ namespace Gate2Reality.DebugTools
 
         private void OnDisable()
         {
+#if UNITY_ANDROID && !UNITY_EDITOR
             if (detector != null)
             {
                 detector.OnRawDetection -= HandleRawDetection;
                 detector.OnHumanPresenceChanged -= HandleHumanPresence;
             }
+#endif
             if (safetyGovernor != null)
             {
                 safetyGovernor.OnIntensityChanged -= HandleIntensity;

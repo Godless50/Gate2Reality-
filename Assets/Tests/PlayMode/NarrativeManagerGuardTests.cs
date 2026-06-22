@@ -61,6 +61,9 @@ namespace Gate2Reality.Tests
             if (_go != null) Object.Destroy(_go);
         }
 
+        private static void SF(object t, string n, object v) =>
+            t.GetType().GetField(n, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(t, v);
+
         [UnityTest]
         public IEnumerator InitialGuardStage_IsDormant()
         {
@@ -140,13 +143,13 @@ namespace Gate2Reality.Tests
             var mgr = go.AddComponent<NarrativeManager>();
             var node = new NarrativeNode { dwellTimeSeconds = 10f };
 
-            SetField(mgr, "nodes", new[] { node });
-            SetField(mgr, "_sceneRunning", true);
-            SetField(mgr, "_currentNodeIndex", 0);
-            SetField(mgr, "_currentNode", node);
+            SF(mgr, "nodes", new[] { node });
+            SF(mgr, "_sceneRunning", true);
+            SF(mgr, "_currentNodeIndex", 0);
+            SF(mgr, "_currentNode", node);
 
             go.SetActive(true);
-            SetField(mgr, "_targetSeenThisFrame", true);
+            SF(mgr, "_targetSeenThisFrame", true);
             _update.Invoke(mgr, null);
 
             yield return null;
@@ -162,10 +165,10 @@ namespace Gate2Reality.Tests
             var mgr = go.AddComponent<NarrativeManager>();
             var node = new NarrativeNode { dwellTimeSeconds = 10f };
 
-            SetField(mgr, "nodes", new[] { node });
-            SetField(mgr, "_sceneRunning", true);
-            SetField(mgr, "_currentNodeIndex", 0);
-            SetField(mgr, "_currentNode", node);
+            SF(mgr, "nodes", new[] { node });
+            SF(mgr, "_sceneRunning", true);
+            SF(mgr, "_currentNodeIndex", 0);
+            SF(mgr, "_currentNode", node);
             node.DwellAccumulator = 1.0f;
 
             go.SetActive(true);

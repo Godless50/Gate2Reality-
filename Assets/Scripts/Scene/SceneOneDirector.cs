@@ -22,7 +22,9 @@ namespace Gate2Reality.Effects
     {
         [Header("Ядро")]
         [SerializeField] private NarrativeManager narrativeManager;
+#if UNITY_ANDROID && !UNITY_EDITOR
         [SerializeField] private YoloObjectDetector detector;
+#endif
 
         [Header("Эффекты сцены")]
         [SerializeField] private ChairAwakeningEffect chairEffect;
@@ -31,7 +33,9 @@ namespace Gate2Reality.Effects
         [SerializeField] private AudioSource beaconSource; // 3D, spatialBlend = 1
 
         [Header("Guard: десатурация (URP Volume c Color Adjustments)")]
+#if !UNITY_EDITOR
         [SerializeField] private Volume desaturationVolume; // weight 0 -> 1
+#endif
         [SerializeField] private float desaturateLerpSeconds = 1.5f;
 
         [Header("Guard: партиклы-проводник")]
@@ -68,7 +72,9 @@ namespace Gate2Reality.Effects
             narrativeManager.OnGuideParticlesRequested += HandleGuideParticles;
             narrativeManager.OnSceneCompleted += HandleSceneCompleted;
             narrativeManager.OnNodeActivated += HandleNodeActivated;
+#if UNITY_ANDROID && !UNITY_EDITOR
             detector.OnRawDetection += HandleRawDetection;
+#endif
         }
 
         private void OnDisable()
@@ -79,7 +85,9 @@ namespace Gate2Reality.Effects
             narrativeManager.OnGuideParticlesRequested -= HandleGuideParticles;
             narrativeManager.OnSceneCompleted -= HandleSceneCompleted;
             narrativeManager.OnNodeActivated -= HandleNodeActivated;
+#if UNITY_ANDROID && !UNITY_EDITOR
             detector.OnRawDetection -= HandleRawDetection;
+#endif
         }
 
         // =====================================================================
@@ -120,7 +128,9 @@ namespace Gate2Reality.Effects
                 // Граф уходит в пространственные узлы Сцены 2 — полный YOLO
                 // больше не нужен, но privacy-вахта (класс person) остаётся
                 // на всю главу: 1 Гц, ~0.2 Вт вместо ~1 Вт.
+#if UNITY_ANDROID && !UNITY_EDITOR
                 if (detector != null) detector.SetPersonOnlyMode(true);
+#endif
             }
         }
 
@@ -179,7 +189,9 @@ namespace Gate2Reality.Effects
             // Сцена закрыта: гасим YOLO-инференс. На Pixel 9 это минус
             // ~0.8-1.2 Вт постоянной нагрузки — главный жест уважения
             // к термопакету Android 15.
+#if UNITY_ANDROID && !UNITY_EDITOR
             if (detector != null) detector.enabled = false;
+#endif
         }
 
         // =====================================================================
@@ -196,6 +208,7 @@ namespace Gate2Reality.Effects
             }
 
             // --- Десатурация ---
+#if !UNITY_EDITOR
             if (_desatDirection == 0f || desaturationVolume == null) return;
 
             float w = desaturationVolume.weight +
@@ -204,6 +217,7 @@ namespace Gate2Reality.Effects
 
             if (desaturationVolume.weight <= 0f || desaturationVolume.weight >= 1f)
                 _desatDirection = 0f; // доехали — больше не трогаем Update-бюджет
+#endif
         }
     }
 }
