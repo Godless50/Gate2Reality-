@@ -1,9 +1,11 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
+#if UNITY_ANDROID && !UNITY_EDITOR
 using UnityEngine.Rendering.Universal;
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
+#endif
 
 namespace Gate2Reality
 {
@@ -38,8 +40,10 @@ namespace Gate2Reality
         public enum Tier : byte { Flagship = 0, Mid = 1, Low = 2 }
 
         [Header("Связи")]
+#if UNITY_ANDROID && !UNITY_EDITOR
         [SerializeField] private AROcclusionManager occlusionManager;
         [SerializeField] private YoloObjectDetector detector;
+#endif
         [SerializeField] private OfflineAnchorRelocalizer relocalizer;
 
         [Header("Частоты YOLO по тирам, мс")]
@@ -116,6 +120,7 @@ namespace Gate2Reality
         // =====================================================================
         private void ApplyTier(Tier tier)
         {
+#if UNITY_ANDROID && !UNITY_EDITOR
             // 1) Частота YOLO
             if (detector != null)
             {
@@ -142,6 +147,7 @@ namespace Gate2Reality
             {
                 urp.renderScale = tier == Tier.Mid ? midRenderScale : lowRenderScale;
             }
+#endif
 
             // 4) L2 relocalization window — slower YOLO → wider detection window needed
             if (relocalizer != null)
@@ -160,6 +166,9 @@ namespace Gate2Reality
         // =====================================================================
         private void VerifyDepthSupport()
         {
+#if !UNITY_ANDROID || UNITY_EDITOR
+            return;
+#else
             if (occlusionManager == null) return;
 
             var descriptor = occlusionManager.descriptor;
@@ -175,13 +184,14 @@ namespace Gate2Reality
                 Debug.LogWarning("[Gate2Reality] Depth API НЕ поддерживается: " +
                                  "окклюзия выключена, fallback-проекция уровня 2+.");
             }
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
+#if DEVELOPMENT_BUILD
             else
             {
                 Debug.Log("[Gate2Reality] Depth API: поддерживается " +
                           $"(режим: {occlusionManager.requestedEnvironmentDepthMode}).");
             }
 #endif
+#endif // UNITY_ANDROID && !UNITY_EDITOR
         }
     }
 }

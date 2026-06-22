@@ -28,7 +28,9 @@ namespace Gate2Reality.Effects
     public sealed class HorrorSafetyGovernor : MonoBehaviour
     {
         [Header("Связи")]
+#if UNITY_ANDROID && !UNITY_EDITOR
         [SerializeField] private YoloObjectDetector detector;
+#endif
         [SerializeField] private AudioMixer audioMixer;
         [Tooltip("Exposed-параметр громкости хоррор-группы микшера, дБ")]
         [SerializeField] private string mixerVolumeParam = "HorrorVolumeDb";
@@ -58,8 +60,10 @@ namespace Gate2Reality.Effects
             Shader.SetGlobalFloat(HorrorScaleId, 1f);
         }
 
+#if UNITY_ANDROID && !UNITY_EDITOR
         private void OnEnable() => detector.OnHumanPresenceChanged += HandlePresence;
         private void OnDisable() => detector.OnHumanPresenceChanged -= HandlePresence;
+#endif
 
         private void HandlePresence(bool humanVisible)
         {
