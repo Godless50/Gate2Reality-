@@ -109,6 +109,8 @@ namespace Gate2Reality.Narrative
         // =====================================================================
         // ВНУТРЕННЕЕ СОСТОЯНИЕ (FSM)
         // =====================================================================
+        public enum NarrativeStage : byte { Prologue=0, Rising=1, Escalation=2, Crisis=3 }
+
         private enum GuardStage : byte
         {
             Dormant = 0,        // игрок активен, таймер тикает
@@ -125,6 +127,7 @@ namespace Gate2Reality.Narrative
         private bool _sceneRunning;
         private bool _targetSeenThisFrame;        // выставляет ReportDetection, читает Update
         private bool _autoStartSuppressed;        // ProgressTracker берёт старт на себя (resume)
+        private int _triggerCount;
 
         // =====================================================================
         // ПУБЛИЧНОЕ СОСТОЯНИЕ (тривиальные геттеры — нужны сейвам в любой сборке)
@@ -134,6 +137,14 @@ namespace Gate2Reality.Narrative
 
         /// <summary>Идёт ли сейчас сцена.</summary>
         public bool IsSceneRunning => _sceneRunning;
+
+        public NarrativeStage CurrentStage => _triggerCount switch
+        {
+            0    => NarrativeStage.Prologue,
+            <= 4 => NarrativeStage.Rising,
+            <= 7 => NarrativeStage.Escalation,
+            _    => NarrativeStage.Crisis
+        };
 
         /// <summary>Количество узлов в активном графе.</summary>
         public int NodeCount => nodes != null ? nodes.Length : 0;
@@ -349,6 +360,7 @@ namespace Gate2Reality.Narrative
             }
 
             OnNodeActivated?.Invoke(_currentNodeIndex, node.LastSeenPose);
+            _triggerCount++;
 
             // Если guard успел обесцветить мир — возвращаем краски.
             if (_guardStage >= GuardStage.Desaturated)
