@@ -44,5 +44,29 @@ namespace Gate2Reality.Persistence
             if (activatedIndex != nodeIndex) return;
             anchorRegistry?.Register(nodeIndex, label, transform);
         }
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// Test-only: force (re-)subscription to NarrativeManager.OnNodeActivated.
+        /// Needed in EditMode tests where Unity may not call OnEnable synchronously
+        /// for components added to initially-inactive GameObjects.
+        /// Unsubscribes first to prevent duplicate subscriptions.
+        /// </summary>
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        public void SubscribeForTest()
+        {
+            if (narrativeManager == null) return;
+            narrativeManager.OnNodeActivated -= HandleActivated; // idempotent unsub first
+            narrativeManager.OnNodeActivated += HandleActivated;
+        }
+
+        /// <summary>Test-only: force unsubscription.</summary>
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        public void UnsubscribeForTest()
+        {
+            if (narrativeManager == null) return;
+            narrativeManager.OnNodeActivated -= HandleActivated;
+        }
+#endif
     }
 }

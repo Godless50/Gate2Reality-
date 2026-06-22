@@ -200,6 +200,7 @@ namespace Gate2Reality.Narrative
         /// <summary>Стартовать/возобновить сцену с произвольного узла (resume из сейва).</summary>
         public void StartSceneAt(int nodeIndex)
         {
+            if (nodes == null || nodes.Length == 0) return; // нет графа — нечего стартовать
             _sceneRunning = true;
             ResetIdleState();
             EnterNode(nodeIndex);

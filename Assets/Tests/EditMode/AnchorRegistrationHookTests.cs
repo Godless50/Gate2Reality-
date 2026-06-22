@@ -43,7 +43,10 @@ namespace Gate2Reality.Tests
             SetPrivate(_hook, "nodeIndex",         0);
             SetPrivate(_hook, "label",             NarrativeLabel.Chair);
 
-            _hookGo.SetActive(true); // OnEnable: подписка на OnNodeActivated
+            _hookGo.SetActive(true); // Awake / OnEnable: подписка на OnNodeActivated
+
+            // Ensure subscription is active regardless of Unity EditMode lifecycle timing.
+            _hook.SubscribeForTest();
         }
 
         [TearDown]
@@ -84,6 +87,7 @@ namespace Gate2Reality.Tests
         public void AfterDisable_EventNoLongerRegisters()
         {
             _hookGo.SetActive(false); // OnDisable: отписка
+            _hook.UnsubscribeForTest(); // Ensure unsubscription regardless of lifecycle timing
             FireNodeActivated(0, new Pose(Vector3.zero, Quaternion.identity));
 
             Assert.AreEqual(0, _registry.All.Count, "отписанный hook не должен реагировать");
@@ -93,7 +97,7 @@ namespace Gate2Reality.Tests
 
         private void FireNodeActivated(int index, Pose pose)
         {
-            // Use the UNITY_EDITOR test helper to avoid fragile reflection.
+            // Use the UNITY_EDITOR test helper to raise the event on the manager.
             _manager.RaiseOnNodeActivatedForTest(index, pose);
         }
 

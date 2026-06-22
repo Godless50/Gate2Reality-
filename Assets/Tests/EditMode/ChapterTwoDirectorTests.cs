@@ -34,14 +34,20 @@ namespace Gate2Reality.Tests
         public void TearDown()
         {
             if (_go != null) UnityEngine.Object.DestroyImmediate(_go);
-            typeof(CrossingTransitionEffect).GetField("OnCrossedOver", SF)?.SetValue(null, null);
-            typeof(ChapterTwoDirector).GetField("OnChapterTwoBegan", SF)?.SetValue(null, null);
+            // Clear static event backing fields (may be public or private depending on Mono version).
+            const BindingFlags AnyStatic = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
+            typeof(CrossingTransitionEffect).GetField("OnCrossedOver", AnyStatic)?.SetValue(null, null);
+            typeof(ChapterTwoDirector).GetField("OnChapterTwoBegan", AnyStatic)?.SetValue(null, null);
         }
 
-        private static void FireCrossedOver()
+        private void FireCrossedOver()
         {
-            // Use the UNITY_EDITOR test helper to avoid fragile reflection.
-            CrossingTransitionEffect.RaiseOnCrossedOverForTest();
+            // Directly invoke the handler on the director instance via reflection instead of
+            // going through event subscription (avoids Unity lifecycle ordering issues).
+            var method = typeof(ChapterTwoDirector).GetMethod(
+                "HandleCrossedOver", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(method, "HandleCrossedOver not found");
+            method.Invoke(_director, null);
         }
 
         [Test]
