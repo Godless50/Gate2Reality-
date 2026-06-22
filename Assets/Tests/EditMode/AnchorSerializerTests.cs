@@ -210,7 +210,12 @@ namespace Gate2Reality.Tests
             Assert.AreEqual(2, data.nodeIndex);
             Assert.IsNull(data.anchors,
                 "v1 save: anchors field absent → null → triggers L3 fallback");
-            Assert.IsNull(data.fingerprint);
+            // Note: Unity's JsonUtility default-constructs [Serializable] class fields
+            // even when absent from JSON, so fingerprint is not null.
+            // The L3 fallback path checks data.anchors == null (or data.version < 2),
+            // not data.fingerprint == null, so this is correct runtime behavior.
+            Assert.AreEqual(0, data.fingerprint.anchorCount,
+                "v1 save: fingerprint is default-constructed with anchorCount=0 → treated as missing");
         }
 
         [Test]

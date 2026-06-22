@@ -93,22 +93,8 @@ namespace Gate2Reality.Tests
 
         private void FireNodeActivated(int index, Pose pose)
         {
-            // Получаем backing field события OnNodeActivated через рефлексию
-            var fi = typeof(NarrativeManager).GetField(
-                "OnNodeActivated",
-                BindingFlags.Instance | BindingFlags.NonPublic);
-
-            if (fi == null)
-            {
-                // Event backing field в C# хранится как делегат с тем же именем
-                fi = typeof(NarrativeManager).GetField(
-                    "OnNodeActivated",
-                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            }
-
-            Assert.IsNotNull(fi, "Backing field OnNodeActivated not found via reflection");
-            var del = fi.GetValue(_manager) as System.Action<int, Pose>;
-            del?.Invoke(index, pose);
+            // Use the UNITY_EDITOR test helper to avoid fragile reflection.
+            _manager.RaiseOnNodeActivatedForTest(index, pose);
         }
 
         private static void SetPrivate(object target, string fieldName, object value)

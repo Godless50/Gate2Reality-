@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.TestTools;
 using Gate2Reality.Narrative;
 
 namespace Gate2Reality.Tests
@@ -37,6 +38,11 @@ namespace Gate2Reality.Tests
         {
             var node = new NarrativeNode();
             node.triggerableBehaviours = new MonoBehaviour[] { null };
+
+            // BuildCache logs an error for each null/non-ITriggerable element in EDITOR builds.
+            // Declare it expected so the test runner does not count it as a failure.
+            LogAssert.Expect(LogType.Error,
+                new System.Text.RegularExpressions.Regex(@"\[Gate2Reality\].*не реализует ITriggerable"));
 
             Assert.DoesNotThrow(() => node.BuildCache());
 

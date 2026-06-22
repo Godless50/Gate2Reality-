@@ -40,8 +40,8 @@ namespace Gate2Reality.Tests
 
         private static void FireCrossedOver()
         {
-            var field = typeof(CrossingTransitionEffect).GetField("OnCrossedOver", SF);
-            (field?.GetValue(null) as Action)?.Invoke();
+            // Use the UNITY_EDITOR test helper to avoid fragile reflection.
+            CrossingTransitionEffect.RaiseOnCrossedOverForTest();
         }
 
         [Test]

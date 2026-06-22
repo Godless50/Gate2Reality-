@@ -401,7 +401,7 @@ namespace Gate2Reality.Narrative
 
         private void EnterNode(int index)
         {
-            if (index < 0 || index >= nodes.Length)
+            if (nodes == null || index < 0 || index >= nodes.Length)
             {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
                 Debug.LogError($"[Gate2Reality] Некорректный индекс узла: {index}");
@@ -495,6 +495,14 @@ namespace Gate2Reality.Narrative
             idleThresholdSeconds,
             (int)_guardStage,
             _sceneRunning);
+
+        /// <summary>
+        /// Test-only helper: directly raise OnNodeActivated without going through
+        /// the full graph logic. Avoids fragile reflection hacks in EditMode tests.
+        /// </summary>
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        public void RaiseOnNodeActivatedForTest(int index, Pose pose)
+            => OnNodeActivated?.Invoke(index, pose);
 #endif
     }
 }

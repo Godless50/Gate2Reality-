@@ -133,5 +133,14 @@ namespace Gate2Reality.Effects
             if (crossingSwell != null) crossingSwell.Stop();
             if (otherSideAmbience != null) otherSideAmbience.Stop();
         }
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// Test-only helper: directly raise OnCrossedOver without running the
+        /// flash-transition coroutine. Avoids fragile reflection in EditMode tests.
+        /// </summary>
+        [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
+        public static void RaiseOnCrossedOverForTest() => OnCrossedOver?.Invoke();
+#endif
     }
 }
