@@ -34,7 +34,9 @@ namespace Gate2Reality.Persistence
 
         [Header("Зависимости")]
         [SerializeField] private AnchorRegistry anchorRegistry;
+#if UNITY_ANDROID && !UNITY_EDITOR
         [SerializeField] private YoloObjectDetector detector;
+#endif
         [SerializeField] private Camera arCamera;
 
         [Header("Параметры L2")]
@@ -116,8 +118,10 @@ namespace Gate2Reality.Persistence
                     best[evt.Label] = (evt.WorldPose, evt.Confidence);
             }
 
+#if UNITY_ANDROID && !UNITY_EDITOR
             detector.OnRawDetection += OnDetection;
             detector.SetPersonOnlyMode(false); // lift privacy guard for window
+#endif
 
             float elapsed = 0f;
             while (elapsed < l2WindowSeconds)
@@ -128,8 +132,10 @@ namespace Gate2Reality.Persistence
                 yield return null;
             }
 
+#if UNITY_ANDROID && !UNITY_EDITOR
             detector.OnRawDetection -= OnDetection;
             detector.SetPersonOnlyMode(true); // restore privacy immediately
+#endif
 
             if (best.Count == 0 || save.anchors == null) yield break;
 
