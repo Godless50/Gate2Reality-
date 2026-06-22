@@ -1,0 +1,20 @@
+{
+  "name": "Gate2Reality.DebugTools",
+  "rootNamespace": "Gate2Reality.DebugTools",
+  "references": [
+    "Gate2Reality.Narrative",
+    "Gate2Reality.Detection",
+    "Gate2Reality.Effects",
+    "Gate2Reality.Persistence",
+    "Gate2Reality.Safety"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

@@ -2,6 +2,18 @@ using UnityEngine;
 
 namespace Gate2Reality.Narrative
 {
+    /// <summary>Нарративная группа объекта — используется ритуальными условиями.</summary>
+    public enum ObjectGroup : byte
+    {
+        Unknown  = 0,
+        Sleep    = 1,
+        Food     = 2,
+        Movement = 3,
+        Child    = 4,
+        Light    = 5,
+        Sharp    = 6
+    }
+
     /// <summary>
     /// Контракт для любого сценического эффекта, который активируется узлом
     /// нарративного графа: world-space свет, шейдер дисторсии, партиклы,
