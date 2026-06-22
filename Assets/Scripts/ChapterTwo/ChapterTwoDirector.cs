@@ -50,9 +50,9 @@ namespace Gate2Reality.ChapterTwo
         [Tooltip("Индексы узлов для ручного фолбэка (1:1 к carriedAnchors)")]
         [SerializeField] private int[] carriedAnchorNodeIndices;
 
+#if UNITY_ANDROID && !UNITY_EDITOR
         [Header("Privacy")]
         [Tooltip("Детектор: подтверждаем person-only на всю главу (обет приватности)")]
-#if UNITY_ANDROID && !UNITY_EDITOR
         [SerializeField] private YoloObjectDetector detector;
 #endif
 
