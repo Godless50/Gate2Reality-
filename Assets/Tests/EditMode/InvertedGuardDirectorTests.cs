@@ -22,9 +22,9 @@ namespace Gate2Reality.Tests
         [TearDown]
         public void TearDown()
         {
-            if (_directorGo != null) Object.DestroyImmediate(_directorGo);
-            if (_cameraGo   != null) Object.DestroyImmediate(_cameraGo);
-            if (_lureGo     != null) Object.DestroyImmediate(_lureGo);
+            if (_directorGo != null) UnityEngine.Object.DestroyImmediate(_directorGo);
+            if (_cameraGo   != null) UnityEngine.Object.DestroyImmediate(_cameraGo);
+            if (_lureGo     != null) UnityEngine.Object.DestroyImmediate(_lureGo);
         }
 
         [Test]

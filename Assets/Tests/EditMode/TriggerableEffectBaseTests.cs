@@ -32,7 +32,7 @@ namespace Gate2Reality.Tests
         }
 
         [TearDown]
-        public void TearDown() => Object.DestroyImmediate(_go);
+        public void TearDown() => UnityEngine.Object.DestroyImmediate(_go);
 
         [Test]
         public void Trigger_SetsIsActiveTrue()

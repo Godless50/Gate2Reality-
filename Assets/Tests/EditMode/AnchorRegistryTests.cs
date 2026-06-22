@@ -21,7 +21,7 @@ namespace Gate2Reality.Tests
         [TearDown]
         public void TearDown()
         {
-            Object.DestroyImmediate(_container);
+            UnityEngine.Object.DestroyImmediate(_container);
         }
 
         [Test]
@@ -30,7 +30,7 @@ namespace Gate2Reality.Tests
             var t = new GameObject().transform;
             _registry.Register(1, NarrativeLabel.Chair, t);
             Assert.AreEqual(1, _registry.All.Count);
-            Object.DestroyImmediate(t.gameObject);
+            UnityEngine.Object.DestroyImmediate(t.gameObject);
         }
 
         [Test]
@@ -41,7 +41,7 @@ namespace Gate2Reality.Tests
             bool found = _registry.TryGet(10, out var result);
             Assert.IsTrue(found);
             Assert.AreSame(t, result);
-            Object.DestroyImmediate(t.gameObject);
+            UnityEngine.Object.DestroyImmediate(t.gameObject);
         }
 
         [Test]
@@ -53,8 +53,8 @@ namespace Gate2Reality.Tests
             _registry.Register(1, NarrativeLabel.Cup, t2);
             Assert.AreEqual(1, _registry.All.Count);
             Assert.AreSame(t2, _registry.All[0].t);
-            Object.DestroyImmediate(t1.gameObject);
-            Object.DestroyImmediate(t2.gameObject);
+            UnityEngine.Object.DestroyImmediate(t1.gameObject);
+            UnityEngine.Object.DestroyImmediate(t2.gameObject);
         }
 
         [Test]
@@ -79,7 +79,7 @@ namespace Gate2Reality.Tests
             _registry.Register(1, NarrativeLabel.Chair, t);
             _registry.Clear();
             Assert.AreEqual(0, _registry.All.Count);
-            Object.DestroyImmediate(t.gameObject);
+            UnityEngine.Object.DestroyImmediate(t.gameObject);
         }
 
         // 14B: Clear also removes from internal index — TryGet must return false
@@ -90,7 +90,7 @@ namespace Gate2Reality.Tests
             _registry.Register(5, NarrativeLabel.Chair, t);
             _registry.Clear();
             Assert.IsFalse(_registry.TryGet(5, out _));
-            Object.DestroyImmediate(t.gameObject);
+            UnityEngine.Object.DestroyImmediate(t.gameObject);
         }
 
         [Test]
@@ -105,8 +105,8 @@ namespace Gate2Reality.Tests
             Assert.AreEqual(NarrativeLabel.Chair, _registry.All[0].label);
             Assert.AreEqual(2, _registry.All[1].nodeIndex);
             Assert.AreEqual(NarrativeLabel.Book, _registry.All[1].label);
-            Object.DestroyImmediate(t1.gameObject);
-            Object.DestroyImmediate(t2.gameObject);
+            UnityEngine.Object.DestroyImmediate(t1.gameObject);
+            UnityEngine.Object.DestroyImmediate(t2.gameObject);
         }
     }
 }

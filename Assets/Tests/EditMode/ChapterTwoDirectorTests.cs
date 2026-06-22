@@ -33,7 +33,7 @@ namespace Gate2Reality.Tests
         [TearDown]
         public void TearDown()
         {
-            if (_go != null) Object.DestroyImmediate(_go);
+            if (_go != null) UnityEngine.Object.DestroyImmediate(_go);
             typeof(CrossingTransitionEffect).GetField("OnCrossedOver", SF)?.SetValue(null, null);
             typeof(ChapterTwoDirector).GetField("OnChapterTwoBegan", SF)?.SetValue(null, null);
         }

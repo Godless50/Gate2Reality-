@@ -41,8 +41,8 @@ namespace Gate2Reality.Tests
         public void TearDown()
         {
             ProgressStore.Clear();
-            if (_mgrGo)     Object.DestroyImmediate(_mgrGo);
-            if (_trackerGo) Object.DestroyImmediate(_trackerGo);
+            if (_mgrGo)     UnityEngine.Object.DestroyImmediate(_mgrGo);
+            if (_trackerGo) UnityEngine.Object.DestroyImmediate(_trackerGo);
         }
 
         // Gemma-2: accepted as-is

@@ -14,7 +14,7 @@ namespace Gate2Reality.Tests
         private GameObject _go;
 
         [TearDown]
-        public void TearDown() { if (_go != null) Object.DestroyImmediate(_go); }
+        public void TearDown() { if (_go != null) UnityEngine.Object.DestroyImmediate(_go); }
 
         private EchoSurfaceEffect CreateEffect()
         {
