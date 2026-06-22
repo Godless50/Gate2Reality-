@@ -2,17 +2,6 @@ namespace Gate2Reality.Detection
 {
     using Gate2Reality.Narrative;
 
-    public enum ObjectGroup : byte
-    {
-        Unknown  = 0,
-        Sleep    = 1,
-        Food     = 2,
-        Movement = 3,
-        Child    = 4,
-        Light    = 5,
-        Sharp    = 6
-    }
-
     public static class ObjectGroupMapper
     {
         public static ObjectGroup GetGroup(NarrativeLabel label) => label switch

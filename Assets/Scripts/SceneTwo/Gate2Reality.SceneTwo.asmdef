@@ -1,0 +1,23 @@
+{
+  "name": "Gate2Reality.SceneTwo",
+  "rootNamespace": "Gate2Reality.SceneTwo",
+  "references": [
+    "Gate2Reality.Narrative",
+    "Gate2Reality.Detection",
+    "Gate2Reality.Effects",
+    "Gate2Reality.Persistence",
+    "Gate2Reality.Safety",
+    "Gate2Reality.UI",
+    "Unity.XR.ARFoundation",
+    "Unity.XR.ARSubsystems"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
