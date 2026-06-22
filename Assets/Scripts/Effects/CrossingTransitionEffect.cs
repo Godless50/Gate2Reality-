@@ -34,7 +34,9 @@ namespace Gate2Reality.Effects
 
         [Header("Та сторона")]
         [Tooltip("Global Volume с пост-профилем изнанки (холодный LUT, виньетка). Weight по умолчанию 0")]
+#if !UNITY_EDITOR
         [SerializeField] private Volume invertedSideVolume;
+#endif
         [SerializeField] private AudioSource crossingSwell;     // нарастающий аккорд входа
         [SerializeField] private AudioSource otherSideAmbience; // мир после перехода, loop
 
@@ -54,7 +56,9 @@ namespace Gate2Reality.Effects
                 flashOverlay.alpha = 0f;
                 flashOverlay.gameObject.SetActive(false);
             }
+#if !UNITY_EDITOR
             if (invertedSideVolume != null) invertedSideVolume.weight = 0f;
+#endif
         }
 
         protected override void OnTriggered()
@@ -88,7 +92,9 @@ namespace Gate2Reality.Effects
                     {
                         _crossFired = true;
                         // Подмена мира под непрозрачной вспышкой.
+#if !UNITY_EDITOR
                         if (invertedSideVolume != null) invertedSideVolume.weight = 1f;
+#endif
                         if (otherSideAmbience != null) otherSideAmbience.Play();
                         OnCrossedOver?.Invoke();
                     }
@@ -121,7 +127,9 @@ namespace Gate2Reality.Effects
                 flashOverlay.alpha = 0f;
                 flashOverlay.gameObject.SetActive(false);
             }
+#if !UNITY_EDITOR
             if (invertedSideVolume != null) invertedSideVolume.weight = 0f;
+#endif
             if (crossingSwell != null) crossingSwell.Stop();
             if (otherSideAmbience != null) otherSideAmbience.Stop();
         }
