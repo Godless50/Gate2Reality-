@@ -26,7 +26,9 @@ namespace Gate2Reality.SceneTwo
     {
         [Header("Ядро")]
         [SerializeField] private NarrativeManager narrativeManager;
+#if UNITY_ANDROID && !UNITY_EDITOR
         [SerializeField] private EchoZonePlacer zonePlacer;
+#endif
 
         [Header("Шёпоты с той стороны")]
         [SerializeField] private OnDeviceNarrativeGenerator narrativeGenerator;
@@ -60,14 +62,18 @@ namespace Gate2Reality.SceneTwo
 
         private void OnEnable()
         {
+#if UNITY_ANDROID && !UNITY_EDITOR
             zonePlacer.OnZonesPlaced += HandleZonesPlaced;
+#endif
             narrativeManager.OnNodeActivated += HandleNodeActivated;
             narrativeManager.OnSceneCompleted += HandleChapterCompleted;
         }
 
         private void OnDisable()
         {
+#if UNITY_ANDROID && !UNITY_EDITOR
             zonePlacer.OnZonesPlaced -= HandleZonesPlaced;
+#endif
             narrativeManager.OnNodeActivated -= HandleNodeActivated;
             narrativeManager.OnSceneCompleted -= HandleChapterCompleted;
         }
@@ -75,6 +81,7 @@ namespace Gate2Reality.SceneTwo
         // =====================================================================
         // КОНВЕЙЕР ШЁПОТОВ
         // =====================================================================
+#if UNITY_ANDROID && !UNITY_EDITOR
         private void HandleZonesPlaced(System.Collections.Generic.IReadOnlyList<EchoZonePlacer.PlacedZone> zones)
         {
             // Узел «Пересечение» делит якорь с дверью-порталом: дверь
@@ -90,6 +97,7 @@ namespace Gate2Reality.SceneTwo
 
             Prefetch(WallSubject); // игрок только увидел карту — время пошло
         }
+#endif
 
         private void HandleNodeActivated(int nodeIndex, Pose pose)
         {
