@@ -37,7 +37,9 @@ namespace Gate2Reality.ChapterTwo
         [Header("База изнанки")]
         [Tooltip("Global Volume холодного пост-профиля. CrossingTransitionEffect уже " +
                  "ставит weight=1 под вспышкой; здесь подтверждаем как базовое состояние.")]
+#if !UNITY_EDITOR
         [SerializeField] private Volume invertedSideVolume;
+#endif
         [SerializeField] private AudioSource invertedAmbience;
 
         [Header("Перенос якорей Главы I -> узлы Главы II")]
@@ -50,7 +52,9 @@ namespace Gate2Reality.ChapterTwo
 
         [Header("Privacy")]
         [Tooltip("Детектор: подтверждаем person-only на всю главу (обет приватности)")]
+#if UNITY_ANDROID && !UNITY_EDITOR
         [SerializeField] private YoloObjectDetector detector;
+#endif
 
         /// <summary>Глава II началась — точка подписки для аудио/аналитики/сейвов.</summary>
         public static event Action OnChapterTwoBegan;
@@ -70,11 +74,15 @@ namespace Gate2Reality.ChapterTwo
             if (chapterTwoRoot != null) chapterTwoRoot.SetActive(true);
 
             // База изнанки как постоянное состояние.
+#if !UNITY_EDITOR
             if (invertedSideVolume != null) invertedSideVolume.weight = 1f;
+#endif
             if (invertedAmbience != null && !invertedAmbience.isPlaying) invertedAmbience.Play();
 
             // Обет приватности продолжает действовать.
+#if UNITY_ANDROID && !UNITY_EDITOR
             if (detector != null) detector.SetPersonOnlyMode(true);
+#endif
 
             // 2) Перенос якорей реальной комнаты в узлы Главы II.
             if (chapterTwoNarrative != null) ApplyCarriedAnchors();

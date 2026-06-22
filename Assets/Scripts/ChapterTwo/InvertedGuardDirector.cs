@@ -38,7 +38,9 @@ namespace Gate2Reality.ChapterTwo
 
         [Header("Сжатие мира")]
         [Tooltip("Виньетка/холодный профиль, наезжающий при простое")]
+#if !UNITY_EDITOR
         [SerializeField] private Volume closingVolume;
+#endif
         [SerializeField] private float closeLerpSeconds = 2f;
         [Tooltip("Доп. усиление веса изнанки при сжатии (0..1)")]
         [SerializeField] private float maxClosingWeight = 1f;
@@ -103,6 +105,7 @@ namespace Gate2Reality.ChapterTwo
 
         private void Update()
         {
+#if !UNITY_EDITOR
             if (_closeDirection == 0f || closingVolume == null) return;
 
             float w = closingVolume.weight +
@@ -111,6 +114,9 @@ namespace Gate2Reality.ChapterTwo
 
             if (closingVolume.weight <= 0f || closingVolume.weight >= maxClosingWeight)
                 _closeDirection = 0f; // доехали — освобождаем Update-бюджет
+#else
+            _ = _closeDirection; // suppress unused warning in Editor
+#endif
         }
     }
 }
