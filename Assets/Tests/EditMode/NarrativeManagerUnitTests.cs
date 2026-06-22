@@ -27,7 +27,7 @@ namespace Gate2Reality.Tests
         [TearDown]
         public void TearDown()
         {
-            if (_go != null) Object.DestroyImmediate(_go);
+            if (_go != null) UnityEngine.Object.DestroyImmediate(_go);
         }
 
         private void SetField(string name, object value) =>
@@ -46,7 +46,7 @@ namespace Gate2Reality.Tests
             _mgr.SetNodeRuntimeTarget(0, anchorGo.transform);
 
             Assert.AreSame(anchorGo.transform, node.condition.runtimeTarget);
-            Object.DestroyImmediate(anchorGo);
+            UnityEngine.Object.DestroyImmediate(anchorGo);
         }
 
         [Test]
@@ -81,7 +81,7 @@ namespace Gate2Reality.Tests
                 .Invoke(mgr, null);
 
             Assert.IsFalse(mgr.IsSceneRunning);
-            Object.DestroyImmediate(go);
+            UnityEngine.Object.DestroyImmediate(go);
         }
 
         // ── NarrativeContext (Gemma-2, Library→Unknown fix by inspector) ─────

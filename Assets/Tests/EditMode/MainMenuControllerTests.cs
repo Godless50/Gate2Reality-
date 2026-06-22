@@ -102,7 +102,7 @@ namespace Gate2Reality.Tests
             go.SetActive(false);
             go.AddComponent<MainMenuController>();
             Assert.DoesNotThrow(() => go.SetActive(true));
-            Object.DestroyImmediate(go);
+            UnityEngine.Object.DestroyImmediate(go);
         }
     }
 }

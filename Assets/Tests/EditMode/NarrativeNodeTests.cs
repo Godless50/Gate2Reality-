@@ -29,7 +29,7 @@ namespace Gate2Reality.Tests
             Assert.AreEqual(1, node.CachedTriggerables.Length);
             Assert.IsNotNull(node.CachedTriggerables[0]);
 
-            Object.DestroyImmediate(go);
+            UnityEngine.Object.DestroyImmediate(go);
         }
 
         [Test]

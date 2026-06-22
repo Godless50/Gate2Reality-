@@ -129,8 +129,8 @@ namespace Gate2Reality.Tests
             Assert.AreEqual(1, data.fingerprint.pairwiseDistances.Length);
             Assert.AreEqual(2f, data.fingerprint.pairwiseDistances[0], 0.05f);
 
-            Object.DestroyImmediate(refGo);
-            Object.DestroyImmediate(otherGo);
+            UnityEngine.Object.DestroyImmediate(refGo);
+            UnityEngine.Object.DestroyImmediate(otherGo);
         }
 
         [Test]
@@ -150,7 +150,7 @@ namespace Gate2Reality.Tests
             Assert.AreEqual((int)NarrativeLabel.Book, data.referenceFrameLabel,
                 "fallback to first registered anchor");
 
-            Object.DestroyImmediate(go);
+            UnityEngine.Object.DestroyImmediate(go);
         }
 
         [Test]
@@ -191,7 +191,7 @@ namespace Gate2Reality.Tests
             Assert.IsFalse(reg.TryGet(0, out _), "Clear should remove nodeIndex 0");
             Assert.IsFalse(reg.TryGet(1, out _), "Clear should remove nodeIndex 1");
 
-            Object.DestroyImmediate(go);
+            UnityEngine.Object.DestroyImmediate(go);
         }
 
         // ─── v1 → v2 migration ────────────────────────────────────────────
@@ -278,7 +278,7 @@ namespace Gate2Reality.Tests
             // All 3 present in anchors[] for L3 relative fallback
             Assert.AreEqual(3, data.anchors.Length, "all anchors saved for L3");
 
-            foreach (var go in gos) Object.DestroyImmediate(go);
+            foreach (var go in gos) UnityEngine.Object.DestroyImmediate(go);
         }
 
         // ─── Three-anchor fingerprint ─────────────────────────────────────
@@ -299,7 +299,7 @@ namespace Gate2Reality.Tests
             Assert.AreEqual(3, fp.anchorCount);
             Assert.AreEqual(3, fp.pairwiseDistances.Length, "3 anchors → 3 pairs");
 
-            foreach (var go in gos) Object.DestroyImmediate(go);
+            foreach (var go in gos) UnityEngine.Object.DestroyImmediate(go);
         }
 
         // ─────────────────────────────────────────────────────────────────────

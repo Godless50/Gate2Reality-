@@ -29,7 +29,7 @@ namespace Gate2Reality.Tests
         }
 
         [TearDown]
-        public void TearDown() { if (_go != null) Object.DestroyImmediate(_go); }
+        public void TearDown() { if (_go != null) UnityEngine.Object.DestroyImmediate(_go); }
 
         [Test]
         public void Trigger_NullCamera_DoesNotThrow()

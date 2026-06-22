@@ -20,8 +20,8 @@ namespace Gate2Reality.Tests
         [TearDown]
         public void TearDown()
         {
-            if (_player != null) Object.DestroyImmediate(_player.gameObject);
-            if (_target != null) Object.DestroyImmediate(_target.gameObject);
+            if (_player != null) UnityEngine.Object.DestroyImmediate(_player.gameObject);
+            if (_target != null) UnityEngine.Object.DestroyImmediate(_target.gameObject);
         }
 
         private static NarrativeCondition Semantic() => new NarrativeCondition

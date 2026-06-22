@@ -37,7 +37,7 @@ namespace Gate2Reality.Tests
         [TearDown]
         public void TearDown()
         {
-            if (_go != null) Object.DestroyImmediate(_go);
+            if (_go != null) UnityEngine.Object.DestroyImmediate(_go);
         }
 
         private int GetPhase() => Convert.ToInt32(PhaseField.GetValue(_fx));

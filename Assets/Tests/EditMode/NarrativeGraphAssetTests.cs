@@ -16,7 +16,7 @@ namespace Gate2Reality.Tests
                 asset.SetNodes(new NarrativeNode[] { });
                 Assert.AreEqual(0, asset.NodeCount);
             }
-            finally { Object.DestroyImmediate(asset); }
+            finally { UnityEngine.Object.DestroyImmediate(asset); }
         }
 
         [Test]
@@ -29,7 +29,7 @@ namespace Gate2Reality.Tests
                     { new NarrativeNode(), new NarrativeNode(), new NarrativeNode() });
                 Assert.AreEqual(3, asset.NodeCount);
             }
-            finally { Object.DestroyImmediate(asset); }
+            finally { UnityEngine.Object.DestroyImmediate(asset); }
         }
 
         [Test]
@@ -42,7 +42,7 @@ namespace Gate2Reality.Tests
                 Assert.IsNotNull(asset.Nodes);
                 Assert.AreEqual(0, asset.NodeCount);
             }
-            finally { Object.DestroyImmediate(asset); }
+            finally { UnityEngine.Object.DestroyImmediate(asset); }
         }
 
         [Test]
@@ -50,7 +50,7 @@ namespace Gate2Reality.Tests
         {
             var asset = ScriptableObject.CreateInstance<NarrativeGraphAsset>();
             try { Assert.AreEqual(0, asset.EntryNodeIndex); }
-            finally { Object.DestroyImmediate(asset); }
+            finally { UnityEngine.Object.DestroyImmediate(asset); }
         }
 
         [Test]
@@ -62,7 +62,7 @@ namespace Gate2Reality.Tests
                 asset.EntryNodeIndex = 2;
                 Assert.AreEqual(2, asset.EntryNodeIndex);
             }
-            finally { Object.DestroyImmediate(asset); }
+            finally { UnityEngine.Object.DestroyImmediate(asset); }
         }
 
         [Test]
@@ -75,7 +75,7 @@ namespace Gate2Reality.Tests
                 var runtime = asset.CreateRuntimeNodes();
                 Assert.IsFalse(ReferenceEquals(runtime, asset.Nodes));
             }
-            finally { Object.DestroyImmediate(asset); }
+            finally { UnityEngine.Object.DestroyImmediate(asset); }
         }
 
         [Test]
@@ -88,7 +88,7 @@ namespace Gate2Reality.Tests
                 var runtime = asset.CreateRuntimeNodes();
                 Assert.AreEqual("Chair", runtime[0].nodeName);
             }
-            finally { Object.DestroyImmediate(asset); }
+            finally { UnityEngine.Object.DestroyImmediate(asset); }
         }
     }
 }

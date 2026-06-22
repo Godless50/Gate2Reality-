@@ -49,8 +49,8 @@ namespace Gate2Reality.Tests
         [TearDown]
         public void TearDown()
         {
-            if (_hookGo != null)   Object.DestroyImmediate(_hookGo);
-            if (_managerGo != null) Object.DestroyImmediate(_managerGo);
+            if (_hookGo != null)   UnityEngine.Object.DestroyImmediate(_hookGo);
+            if (_managerGo != null) UnityEngine.Object.DestroyImmediate(_managerGo);
         }
 
         [Test]
