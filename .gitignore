@@ -54,3 +54,7 @@ Assets/Plugins/Android/*.jar
 
 # Logs
 *.log
+
+# Сторонние CLI-инструменты (OpenCode/oh-my-opencode-slim), не относятся к проекту
+.omo/
+.opencode/

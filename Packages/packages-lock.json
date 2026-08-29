@@ -17,6 +17,15 @@
       },
       "hash": "4ce7dd3cc54e37e2ed6dc59cb5a047f3dccb3f50"
     },
+    "com.unity.adaptiveperformance.google.android": {
+      "version": "6.0.0",
+      "depth": 0,
+      "source": "builtin",
+      "dependencies": {
+        "com.unity.modules.adaptiveperformance": "1.0.0",
+        "com.unity.modules.androidjni": "1.0.0"
+      }
+    },
     "com.unity.ai.inference": {
       "version": "2.6.1",
       "depth": 1,
@@ -259,6 +268,14 @@
         "com.unity.xr.legacyinputhelpers": "2.1.7"
       },
       "url": "https://packages.unity.com"
+    },
+    "com.unity.modules.adaptiveperformance": {
+      "version": "1.0.0",
+      "depth": 1,
+      "source": "builtin",
+      "dependencies": {
+        "com.unity.modules.subsystems": "1.0.0"
+      }
     },
     "com.unity.modules.androidjni": {
       "version": "1.0.0",

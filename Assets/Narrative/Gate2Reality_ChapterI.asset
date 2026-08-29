@@ -1,0 +1,115 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85df210e62b78e3dfa2aac38fbb38165, type: 3}
+  m_Name: Gate2Reality_ChapterI
+  m_EditorClassIdentifier: Gate2Reality.Narrative::Gate2Reality.Narrative.NarrativeGraphAsset
+  nodes:
+  - nodeName: "0 \xB7 The Chair \u2014 Awakening"
+    condition:
+      type: 0
+      requiredLabel: 1
+      minConfidence: 0.85
+      maxBoundsRadius: 1.5
+      runtimeTarget: {fileID: 0}
+      triggerRadius: 1.2
+      maxGazeAngleDeg: 12
+      maxGazeDistance: 6
+    dwellTimeSeconds: 0.75
+    triggerableBehaviours: []
+    nextNodeIndices: 01000000
+  - nodeName: "1 \xB7 The Book \u2014 Memory"
+    condition:
+      type: 0
+      requiredLabel: 2
+      minConfidence: 0.85
+      maxBoundsRadius: 1.5
+      runtimeTarget: {fileID: 0}
+      triggerRadius: 1.2
+      maxGazeAngleDeg: 12
+      maxGazeDistance: 6
+    dwellTimeSeconds: 0.75
+    triggerableBehaviours: []
+    nextNodeIndices: 02000000
+  - nodeName: "2 \xB7 The Cup \u2014 Breach"
+    condition:
+      type: 0
+      requiredLabel: 3
+      minConfidence: 0.85
+      maxBoundsRadius: 1.5
+      runtimeTarget: {fileID: 0}
+      triggerRadius: 1.2
+      maxGazeAngleDeg: 12
+      maxGazeDistance: 6
+    dwellTimeSeconds: 1
+    triggerableBehaviours: []
+    nextNodeIndices: 03000000
+  - nodeName: "3 \xB7 WallEcho"
+    condition:
+      type: 1
+      requiredLabel: 0
+      minConfidence: 0.85
+      maxBoundsRadius: 1.5
+      runtimeTarget: {fileID: 0}
+      triggerRadius: 1.2
+      maxGazeAngleDeg: 12
+      maxGazeDistance: 6
+    dwellTimeSeconds: 0.5
+    triggerableBehaviours: []
+    nextNodeIndices: 04000000
+  - nodeName: "4 \xB7 SurfaceEcho"
+    condition:
+      type: 1
+      requiredLabel: 0
+      minConfidence: 0.85
+      maxBoundsRadius: 1.5
+      runtimeTarget: {fileID: 0}
+      triggerRadius: 1.2
+      maxGazeAngleDeg: 12
+      maxGazeDistance: 6
+    dwellTimeSeconds: 0.5
+    triggerableBehaviours: []
+    nextNodeIndices: 05000000
+  - nodeName: "5 \xB7 PortalWall"
+    condition:
+      type: 2
+      requiredLabel: 0
+      minConfidence: 0.85
+      maxBoundsRadius: 1.5
+      runtimeTarget: {fileID: 0}
+      triggerRadius: 1.2
+      maxGazeAngleDeg: 12
+      maxGazeDistance: 6
+    dwellTimeSeconds: 1
+    triggerableBehaviours: []
+    nextNodeIndices: 06000000
+  - nodeName: "6 \xB7 Crossing"
+    condition:
+      type: 1
+      requiredLabel: 0
+      minConfidence: 0.85
+      maxBoundsRadius: 1.5
+      runtimeTarget: {fileID: 0}
+      triggerRadius: 0.5
+      maxGazeAngleDeg: 12
+      maxGazeDistance: 6
+    dwellTimeSeconds: 0.4
+    triggerableBehaviours: []
+    nextNodeIndices: 
+  entryNodeIndex: 0
+  editorNodePositions:
+  - {x: 40, y: 60}
+  - {x: 270, y: 60}
+  - {x: 500, y: 60}
+  - {x: 730, y: 60}
+  - {x: 960, y: 60}
+  - {x: 1190, y: 60}
+  - {x: 1420, y: 60}

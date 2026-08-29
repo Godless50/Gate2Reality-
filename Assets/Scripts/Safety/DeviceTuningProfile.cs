@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.AdaptivePerformance;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.XR.ARFoundation;
@@ -55,6 +56,9 @@ namespace Gate2Reality
         [Header("Render Scale по тирам")]
         [SerializeField] private float midRenderScale = 0.9f;
         [SerializeField] private float lowRenderScale = 0.8f;
+
+        private int _currentIntervalMs;
+        private bool _thermalDoubled;
 
         public Tier DetectedTier { get; private set; }
 
@@ -118,12 +122,13 @@ namespace Gate2Reality
             // 1) Частота YOLO
             if (detector != null)
             {
-                detector.SetInferenceInterval(tier switch
+                _currentIntervalMs = tier switch
                 {
                     Tier.Flagship => flagshipIntervalMs,
                     Tier.Mid => midIntervalMs,
                     _ => lowIntervalMs
-                });
+                };
+                detector.SetInferenceInterval(_currentIntervalMs);
             }
 
             // 2) Режим Environment Depth: Best на флагманах, Fastest ниже —
@@ -181,6 +186,68 @@ namespace Gate2Reality
                           $"(режим: {occlusionManager.requestedEnvironmentDepthMode}).");
             }
 #endif
+        }
+
+        // =====================================================================
+        // НИЗКАЯ ПАМЯТЬ (чек-лист, §11): удваиваем интервал YOLO вместо краша
+        // =====================================================================
+        private void OnEnable()
+        {
+            Application.lowMemory += HandleLowMemory;
+
+            if (Holder.Instance != null && Holder.Instance.ThermalStatus != null)
+            {
+                Holder.Instance.ThermalStatus.ThermalEvent += HandleThermalEvent;
+            }
+        }
+
+        private void OnDisable()
+        {
+            Application.lowMemory -= HandleLowMemory;
+
+            if (Holder.Instance != null && Holder.Instance.ThermalStatus != null)
+            {
+                Holder.Instance.ThermalStatus.ThermalEvent -= HandleThermalEvent;
+            }
+        }
+
+        private void HandleLowMemory()
+        {
+            if (detector == null) return;
+
+            _currentIntervalMs *= 2;
+            detector.SetInferenceInterval(_currentIntervalMs);
+            Debug.LogWarning($"[Gate2Reality] Low memory: YOLO interval -> {_currentIntervalMs}ms");
+        }
+
+        // =====================================================================
+        // ТЕРМАЛЬНЫЙ ТРОТТЛИНГ (чек-лист, §11): Adaptive Performance API.
+        // Событие может срабатывать многократно — удваиваем один раз при
+        // входе в Throttling, восстанавливаем при выходе (не на каждый вызов).
+        // =====================================================================
+        private void HandleThermalEvent(ThermalMetrics thermalMetrics)
+        {
+            if (detector == null)
+            {
+                return;
+            }
+
+            bool severe = thermalMetrics.WarningLevel == WarningLevel.Throttling;
+
+            if (severe && _thermalDoubled == false)
+            {
+                _thermalDoubled = true;
+                _currentIntervalMs *= 2;
+                detector.SetInferenceInterval(_currentIntervalMs);
+                Debug.LogWarning($"[Gate2Reality] Thermal throttling: YOLO interval -> {_currentIntervalMs}ms");
+            }
+            else if (!severe && _thermalDoubled == true)
+            {
+                _thermalDoubled = false;
+                _currentIntervalMs /= 2;
+                detector.SetInferenceInterval(_currentIntervalMs);
+                Debug.Log($"[Gate2Reality] Thermal recovered: YOLO interval -> {_currentIntervalMs}ms");
+            }
         }
     }
 }
