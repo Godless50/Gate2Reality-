@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.coplaydev.unity-mcp": "https://github.com/CoplayDev/unity-mcp.git?path=/MCPForUnity#main",
     "com.unity.xr.arfoundation": "6.4.0",
     "com.unity.xr.arcore": "6.4.0",
     "com.unity.sentis": "2.1.0",
